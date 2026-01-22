@@ -1,8 +1,8 @@
-#Fri Nov 14 16:03:29 BRT 2025
-base.0=D\:\\Projeto de Deus\\autoatendimento\\build\\app\\intermediates\\dex\\debug\\mergeExtDexDebug\\classes.dex
-base.1=D\:\\Projeto de Deus\\autoatendimento\\build\\app\\intermediates\\dex\\debug\\mergeProjectDexDebug\\0\\classes.dex
-base.2=D\:\\Projeto de Deus\\autoatendimento\\build\\app\\intermediates\\dex\\debug\\mergeProjectDexDebug\\13\\classes.dex
-base.3=D\:\\Projeto de Deus\\autoatendimento\\build\\app\\intermediates\\dex\\debug\\mergeProjectDexDebug\\1\\classes.dex
+#Thu Jan 22 10:24:42 BRT 2026
+base.0=D\:\\Projeto de Deus\\totem Autosystem\\autoatendimento\\build\\app\\intermediates\\dex\\debug\\mergeExtDexDebug\\classes.dex
+base.1=D\:\\Projeto de Deus\\totem Autosystem\\autoatendimento\\build\\app\\intermediates\\dex\\debug\\mergeProjectDexDebug\\0\\classes.dex
+base.2=D\:\\Projeto de Deus\\totem Autosystem\\autoatendimento\\build\\app\\intermediates\\dex\\debug\\mergeProjectDexDebug\\13\\classes.dex
+base.3=D\:\\Projeto de Deus\\totem Autosystem\\autoatendimento\\build\\app\\intermediates\\dex\\debug\\mergeProjectDexDebug\\1\\classes.dex
 path.0=classes.dex
 path.1=0/classes.dex
 path.2=13/classes.dex

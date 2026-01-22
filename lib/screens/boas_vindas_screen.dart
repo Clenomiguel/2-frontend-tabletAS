@@ -21,7 +21,6 @@ class _BoasVindasScreenState extends State<BoasVindasScreen>
     with TickerProviderStateMixin {
   static const roxo = Color(0xFF4B0082);
   static const dourado = Color(0xFFFFD700);
-  static const verde = Color(0xFF00C851); // Remove if not used
 
   late AnimationController _fadeController;
   late AnimationController _scaleController;

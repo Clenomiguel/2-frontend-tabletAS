@@ -8,177 +8,237 @@ import 'package:http/http.dart' as http;
 import 'boas_vindas_screen.dart';
 import 'splash_screen.dart';
 
-// Modelos para API
+// =============================================================================
+// MODELO - ClienteResponse (Atualizado para novo backend)
+// =============================================================================
 class ClienteResponse {
-  final int id;
-  final String? codigo;
+  final int grid; // ✅ Mudou de 'id' para 'grid' (PK do novo backend)
+  final int? codigo;
   final String? nome;
   final String? nomeReduzido;
   final String? tipo;
   final String? cpf;
-  final String? telefone;
+  final String? fone; // ✅ Mudou de 'telefone' para 'fone'
   final String? celular;
   final String? email;
 
   ClienteResponse({
-    required this.id,
+    required this.grid,
     this.codigo,
     this.nome,
     this.nomeReduzido,
     this.tipo,
     this.cpf,
-    this.telefone,
+    this.fone,
     this.celular,
     this.email,
   });
 
   factory ClienteResponse.fromJson(Map<String, dynamic> json) {
     return ClienteResponse(
-      id: json['id'],
-      codigo: json['codigo']?.toString(),
+      grid: json['grid'] ?? 0, // ✅ Usando 'grid' como PK
+      codigo:
+          json['codigo'] is int
+              ? json['codigo']
+              : int.tryParse(json['codigo']?.toString() ?? ''),
       nome: json['nome'],
       nomeReduzido: json['nome_reduzido'],
       tipo: json['tipo']?.toString(),
       cpf: json['cpf'],
-      telefone: json['telefone'],
+      fone: json['fone'], // ✅ Campo correto do backend
       celular: json['celular'],
       email: json['email'],
     );
   }
+
+  /// Retorna o telefone disponível (celular tem prioridade)
+  String? get telefoneDisponivel =>
+      celular?.isNotEmpty == true ? celular : fone;
 }
 
+// =============================================================================
+// API SERVICE (Atualizado para novo backend FastAPI)
+// =============================================================================
 class ApiService {
-  // Configurar a URL base da API - AJUSTE CONFORME SEU AMBIENTE
+  // ✅ CONFIGURAÇÃO DO NOVO BACKEND
+  // Ajuste conforme seu ambiente
   static const String baseUrl =
-      'http://192.168.3.150:8000/api/v1'; // Para emulador Android
-  static const String healthUrl =
-      'http://192.168.3.150:8000'; // URL base para health check
+      'http://192.168.3.150:8000'; // URL base do backend
+  static const String apiPath =
+      '/api/v1/clientes'; // Prefixo do router de clientes
 
-  // CONFIGURAÇÕES ALTERNATIVAS:
-  // Para dispositivo físico: 'http://192.168.1.100:8000/api/v1' (substitua pelo IP da sua máquina)
-  // Para iOS Simulator: 'http://127.0.0.1:8000/api/v1'
-  // Para teste local: 'http://localhost:8000/api/v1'
+  // URLs completas
+  static String get clientesUrl => '$baseUrl$apiPath';
+  static String get healthUrl => '$baseUrl/health';
 
+  // =========================================================================
+  // BUSCAR CLIENTE POR CPF
+  // Endpoint: GET /clientes/cpf/{cpf}
+  // =========================================================================
   static Future<ClienteResponse?> buscarClientePorCpf(String cpf) async {
     try {
-      // Envia CPF formatado (com pontuação) como está no banco
-      final cpfFormatado = _formatarCpf(cpf);
-      print('🔍 Buscando CPF: $cpfFormatado');
+      // Remove caracteres especiais do CPF para a URL
+      final cpfLimpo = cpf.replaceAll(RegExp(r'\D'), '');
+      print('🔍 Buscando CPF: $cpfLimpo');
 
       final response = await http
           .get(
-            Uri.parse('$baseUrl/pessoa/cpf/$cpfFormatado'),
+            Uri.parse('$clientesUrl/cpf/$cpfLimpo'),
             headers: {'Content-Type': 'application/json'},
           )
           .timeout(const Duration(seconds: 10));
+
+      print('📡 Status: ${response.statusCode}');
+      print('📄 Response: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         return ClienteResponse.fromJson(data);
       } else if (response.statusCode == 404) {
-        return null; // Cliente não encontrado
+        print('ℹ️ CPF não encontrado no banco');
+        return null;
       } else {
         throw Exception('Erro na consulta: ${response.statusCode}');
       }
+    } on SocketException {
+      throw Exception('Sem conexão com o servidor');
+    } on TimeoutException {
+      throw Exception('Tempo de conexão esgotado');
     } catch (e) {
+      print('❌ Erro ao buscar CPF: $e');
       throw Exception('Erro de conexão: $e');
     }
   }
 
-  static Future<bool> validarCpf(String cpf) async {
+  // =========================================================================
+  // VALIDAR SE CPF JÁ EXISTE
+  // Endpoint: GET /clientes/validar/cpf/{cpf}
+  // =========================================================================
+  static Future<bool> validarCpfExiste(String cpf) async {
     try {
-      // Envia CPF formatado (com pontuação) como está no banco
-      final cpfFormatado = _formatarCpf(cpf);
-      print('🔍 Validando CPF: $cpfFormatado');
+      final cpfLimpo = cpf.replaceAll(RegExp(r'\D'), '');
+      print('🔍 Validando CPF: $cpfLimpo');
 
       final response = await http
           .get(
-            Uri.parse('$baseUrl/pessoa/validar/cpf/$cpfFormatado'),
+            Uri.parse('$clientesUrl/validar/cpf/$cpfLimpo'),
             headers: {'Content-Type': 'application/json'},
           )
           .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        return data['existe'] ?? false;
+        return data['exists'] ?? false;
       }
       return false;
     } catch (e) {
+      print('❌ Erro ao validar CPF: $e');
       throw Exception('Erro ao validar CPF: $e');
     }
   }
 
-  static Future<bool> cadastrarCliente({
+  // =========================================================================
+  // VALIDAR SE EMAIL JÁ EXISTE
+  // Endpoint: GET /clientes/validar/email/{email}
+  // =========================================================================
+  static Future<bool> validarEmailExiste(String email) async {
+    try {
+      print('🔍 Validando Email: $email');
+
+      final response = await http
+          .get(
+            Uri.parse(
+              '$clientesUrl/validar/email/${Uri.encodeComponent(email)}',
+            ),
+            headers: {'Content-Type': 'application/json'},
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['exists'] ?? false;
+      }
+      return false;
+    } catch (e) {
+      print('❌ Erro ao validar email: $e');
+      return false; // Em caso de erro, permite continuar
+    }
+  }
+
+  // =========================================================================
+  // CADASTRAR NOVO CLIENTE
+  // Endpoint: POST /clientes
+  // Body: ClienteCreate { cpf, nome, email, fone?, celular? }
+  // =========================================================================
+  static Future<ClienteResponse?> cadastrarCliente({
     required String cpf,
     required String nome,
     required String telefone,
     required String email,
   }) async {
     try {
-      // Prepara dados para envio
+      // ✅ Prepara dados conforme schema ClienteCreate do backend
       final body = {
-        'cpf': cpf, // Envia CPF como digitado (será formatado no backend)
-        'nome': nome,
-        'telefone': telefone,
-        'email': email,
+        'cpf': cpf.replaceAll(RegExp(r'\D'), ''), // Envia só números
+        'nome': nome.trim().toUpperCase(), // Backend espera uppercase
+        'email': email.trim().toLowerCase(), // Backend espera lowercase
+        'celular': telefone.replaceAll(RegExp(r'\D'), ''), // Envia só números
       };
 
-      print('📝 Enviando dados para cadastro: ${json.encode(body)}');
+      print('📝 Enviando cadastro: ${json.encode(body)}');
 
-      // Chama o endpoint POST real da API
       final response = await http
           .post(
-            Uri.parse('$baseUrl/pessoa'),
+            Uri.parse(clientesUrl),
             headers: {'Content-Type': 'application/json'},
             body: json.encode(body),
           )
           .timeout(const Duration(seconds: 15));
 
-      print('📡 Status do cadastro: ${response.statusCode}');
-      print('📄 Resposta do cadastro: ${response.body}');
+      print('📡 Status cadastro: ${response.statusCode}');
+      print('📄 Response: ${response.body}');
 
       if (response.statusCode == 201) {
-        // Sucesso no cadastro
+        // ✅ Sucesso - retorna o cliente criado
         final data = json.decode(response.body);
-        print('✅ Cliente cadastrado com sucesso: ${data['message']}');
-        return true;
-      } else if (response.statusCode == 409) {
-        // CPF ou email já existe
+        print('✅ Cliente cadastrado com sucesso! Grid: ${data['grid']}');
+        return ClienteResponse.fromJson(data);
+      } else if (response.statusCode == 400) {
         final data = json.decode(response.body);
-        throw Exception('${data['detail']}');
-      } else if (response.statusCode == 502) {
-        // Erro na API do Linx
-        throw Exception('Erro no sistema Linx. Tente novamente.');
-      } else if (response.statusCode == 504) {
-        // Timeout na API do Linx
-        throw Exception('Sistema Linx indisponível. Tente novamente.');
+        final detail = data['detail'] ?? 'Erro no cadastro';
+
+        if (detail.toString().toLowerCase().contains('cpf')) {
+          throw Exception('CPF já está cadastrado no sistema');
+        } else if (detail.toString().toLowerCase().contains('email')) {
+          throw Exception('Email já está cadastrado no sistema');
+        }
+        throw Exception(detail);
       } else {
-        // Outros erros
         final data = json.decode(response.body);
-        throw Exception(
-          'Erro no cadastro: ${data['detail'] ?? 'Erro desconhecido'}',
-        );
+        throw Exception(data['detail'] ?? 'Erro desconhecido no cadastro');
       }
+    } on SocketException {
+      throw Exception('Sem conexão com o servidor');
+    } on TimeoutException {
+      throw Exception('Tempo de conexão esgotado');
     } catch (e) {
       print('❌ Erro no cadastro: $e');
-      throw Exception('Erro ao cadastrar cliente: $e');
+      rethrow;
     }
   }
 
+  // =========================================================================
+  // TESTAR CONEXÃO COM O SERVIDOR
+  // =========================================================================
   static Future<bool> testarConexao() async {
     try {
-      print('🔍 Testando conexão: $healthUrl/health');
+      print('🔍 Testando conexão: $healthUrl');
 
       final response = await http
-          .get(
-            Uri.parse('$healthUrl/health'),
-            headers: {'Content-Type': 'application/json'},
-          )
+          .get(Uri.parse(healthUrl))
           .timeout(const Duration(seconds: 5));
 
-      print('📡 Status da resposta: ${response.statusCode}');
-      print('📄 Corpo da resposta: ${response.body}');
-
+      print('📡 Status: ${response.statusCode}');
       return response.statusCode == 200;
     } catch (e) {
       print('❌ Erro na conexão: $e');
@@ -186,43 +246,48 @@ class ApiService {
     }
   }
 
+  // =========================================================================
+  // DEBUG DE CONEXÃO
+  // =========================================================================
   static Future<void> debugConexao() async {
     print('🐛 === DEBUG DE CONEXÃO ===');
-    print('🌐 URL Base: $baseUrl');
-    print('🏥 URL Health: $healthUrl/health');
+    print('🌐 Base URL: $baseUrl');
+    print('👤 Clientes URL: $clientesUrl');
+    print('🏥 Health URL: $healthUrl');
 
     try {
       // Teste 1: Health check
-      print('🧪 Teste 1: Health Check');
+      print('\n🧪 Teste 1: Health Check');
       final healthResponse = await http
-          .get(Uri.parse('$healthUrl/health'))
+          .get(Uri.parse(healthUrl))
           .timeout(const Duration(seconds: 5));
       print('   Status: ${healthResponse.statusCode}');
-      print('   Body: ${healthResponse.body}');
 
-      // Teste 2: Info endpoint
-      print('🧪 Teste 2: Info endpoint');
-      final infoResponse = await http
-          .get(Uri.parse('$healthUrl/info'))
-          .timeout(const Duration(seconds: 5));
-      print('   Status: ${infoResponse.statusCode}');
-      print('   Body: ${infoResponse.body}');
-
-      // Teste 3: Clientes endpoint
-      print('🧪 Teste 3: Clientes endpoint');
+      // Teste 2: Listar clientes (limite 1)
+      print('\n🧪 Teste 2: Listar clientes');
       final clientesResponse = await http
-          .get(Uri.parse('$baseUrl/clientes?limit=1'))
+          .get(Uri.parse('$clientesUrl?limit=1'))
           .timeout(const Duration(seconds: 5));
       print('   Status: ${clientesResponse.statusCode}');
-      print(
-        '   Body: ${clientesResponse.body.length > 200 ? clientesResponse.body.substring(0, 200) + "..." : clientesResponse.body}',
-      );
+
+      // Teste 3: Estatísticas
+      print('\n🧪 Teste 3: Estatísticas de clientes');
+      final statsResponse = await http
+          .get(Uri.parse('$clientesUrl/stats'))
+          .timeout(const Duration(seconds: 5));
+      print('   Status: ${statsResponse.statusCode}');
+      if (statsResponse.statusCode == 200) {
+        print('   Stats: ${statsResponse.body}');
+      }
     } catch (e) {
       print('❌ Erro no debug: $e');
     }
-    print('🐛 === FIM DEBUG ===');
+    print('\n🐛 === FIM DEBUG ===');
   }
 
+  // =========================================================================
+  // TESTAR INTERNET BÁSICO
+  // =========================================================================
   static Future<bool> testarInternetBasico() async {
     try {
       final result = await InternetAddress.lookup('google.com');
@@ -236,22 +301,11 @@ class ApiService {
       return false;
     }
   }
-
-  // Método para formatar CPF no padrão do banco (XXX.XXX.XXX-XX)
-  static String _formatarCpf(String cpf) {
-    // Remove tudo que não é número
-    final cpfLimpo = cpf.replaceAll(RegExp(r'\D'), '');
-
-    // Verifica se tem 11 dígitos
-    if (cpfLimpo.length != 11) {
-      return cpf; // Retorna original se não tiver 11 dígitos
-    }
-
-    // Formata: XXX.XXX.XXX-XX
-    return '${cpfLimpo.substring(0, 3)}.${cpfLimpo.substring(3, 6)}.${cpfLimpo.substring(6, 9)}-${cpfLimpo.substring(9, 11)}';
-  }
 }
 
+// =============================================================================
+// CRM SCREEN (Tela de Identificação do Cliente)
+// =============================================================================
 class CrmScreen extends StatefulWidget {
   const CrmScreen({super.key});
 
@@ -260,6 +314,7 @@ class CrmScreen extends StatefulWidget {
 }
 
 class _CrmScreenState extends State<CrmScreen> {
+  // Cores do tema
   static const roxo = Color(0xFF4B0082);
   static const cinzaFundo = Color(0xFFF6F6F8);
 
@@ -287,7 +342,7 @@ class _CrmScreenState extends State<CrmScreen> {
   bool _conexaoOk = false;
   ClienteResponse? _clienteEncontrado;
 
-  // ✅ Timer de inatividade (90 segundos = 1min 30s)
+  // Timer de inatividade (90 segundos)
   Timer? _inactivityTimer;
   int _inactivitySeconds = 90;
   static const int _maxInactivitySeconds = 90;
@@ -296,14 +351,12 @@ class _CrmScreenState extends State<CrmScreen> {
   void initState() {
     super.initState();
     _verificarConexao();
-
-    // ✅ Iniciar timer de inatividade
     _iniciarTimerInatividade();
   }
 
   @override
   void dispose() {
-    _inactivityTimer?.cancel(); // ✅ Cancelar timer de inatividade
+    _inactivityTimer?.cancel();
     _cpfController.dispose();
     _nomeController.dispose();
     _telefoneController.dispose();
@@ -311,7 +364,9 @@ class _CrmScreenState extends State<CrmScreen> {
     super.dispose();
   }
 
-  // ✅ NOVO: Iniciar/Reiniciar timer de inatividade
+  // ===========================================================================
+  // TIMER DE INATIVIDADE
+  // ===========================================================================
   void _iniciarTimerInatividade() {
     _inactivityTimer?.cancel();
     setState(() => _inactivitySeconds = _maxInactivitySeconds);
@@ -319,8 +374,6 @@ class _CrmScreenState extends State<CrmScreen> {
     _inactivityTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       setState(() {
         _inactivitySeconds--;
-
-        // Quando chegar a zero, volta para tela inicial
         if (_inactivitySeconds <= 0) {
           _voltarParaTelaInicial();
         }
@@ -328,16 +381,13 @@ class _CrmScreenState extends State<CrmScreen> {
     });
   }
 
-  // ✅ NOVO: Resetar timer quando houver interação
   void _resetarTimerInatividade() {
     _iniciarTimerInatividade();
   }
 
-  // ✅ NOVO: Voltar para tela inicial por inatividade
   void _voltarParaTelaInicial() {
     _inactivityTimer?.cancel();
 
-    // Mostrar mensagem
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Sessão encerrada por inatividade'),
@@ -346,7 +396,6 @@ class _CrmScreenState extends State<CrmScreen> {
       ),
     );
 
-    // Limpar tudo e voltar para splash
     Future.delayed(const Duration(milliseconds: 500), () {
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
@@ -357,10 +406,12 @@ class _CrmScreenState extends State<CrmScreen> {
     });
   }
 
+  // ===========================================================================
+  // CONEXÃO
+  // ===========================================================================
   Future<void> _verificarConexao() async {
     print('🔄 Verificando conexão...');
 
-    // Primeiro testa conectividade básica com internet
     final temInternet = await ApiService.testarInternetBasico();
     if (!temInternet) {
       setState(() => _conexaoOk = false);
@@ -368,7 +419,6 @@ class _CrmScreenState extends State<CrmScreen> {
       return;
     }
 
-    // Executa debug completo da conexão
     await ApiService.debugConexao();
 
     final conexao = await ApiService.testarConexao();
@@ -376,16 +426,18 @@ class _CrmScreenState extends State<CrmScreen> {
 
     if (!conexao) {
       _mostrarSnackBar('Sem conexão com servidor.', isError: true);
-      print('❌ Falha na conexão com o servidor');
     } else {
       print('✅ Conexão estabelecida com sucesso');
     }
   }
 
-  // Validação de CPF
-  bool isValidCpf(String cpf) {
+  // ===========================================================================
+  // VALIDAÇÕES
+  // ===========================================================================
+  bool _isValidCpf(String cpf) {
     cpf = cpf.replaceAll(RegExp(r'[^0-9]'), '');
     if (cpf.length != 11 || RegExp(r'^(\d)\1*$').hasMatch(cpf)) return false;
+
     List<int> n = cpf.split('').map(int.parse).toList();
 
     int calc(List<int> nums, int max) {
@@ -402,16 +454,17 @@ class _CrmScreenState extends State<CrmScreen> {
     return d1 == n[9] && d2 == n[10];
   }
 
-  // Validação de email
-  bool isValidEmail(String email) {
+  bool _isValidEmail(String email) {
     return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
   }
 
-  // Pesquisar CPF na API
+  // ===========================================================================
+  // PESQUISAR CPF
+  // ===========================================================================
   Future<void> _pesquisarCpf() async {
     String cpf = _cpfController.text.replaceAll(RegExp(r'\D'), '');
 
-    if (!isValidCpf(cpf)) {
+    if (!_isValidCpf(cpf)) {
       _mostrarSnackBar('CPF inválido.', isError: true);
       return;
     }
@@ -423,12 +476,9 @@ class _CrmScreenState extends State<CrmScreen> {
 
     setState(() => _isLoading = true);
 
-    // Mostra mensagem de que está consultando
-    // _mostrarSnackBar('Consultando CPF...', isError: false);
-
     try {
-      print('🔍 Iniciando busca de CPF: ${_cpfController.text}');
-      final cliente = await ApiService.buscarClientePorCpf(_cpfController.text);
+      print('🔍 Iniciando busca de CPF: $cpf');
+      final cliente = await ApiService.buscarClientePorCpf(cpf);
 
       setState(() {
         _isLoading = false;
@@ -441,12 +491,10 @@ class _CrmScreenState extends State<CrmScreen> {
       });
 
       if (_cpfEncontrado && cliente != null) {
-        // print('✅ Cliente encontrado: ${cliente.nome}');
-        // _mostrarSnackBar('Cliente encontrado: ${cliente.nome}', isError: false);
+        print('✅ Cliente encontrado: ${cliente.nome}');
         await Future.delayed(const Duration(seconds: 2));
         _navegarParaProximaTela();
       } else {
-        print('ℹ️ CPF não encontrado no banco');
         _mostrarSnackBar(
           'CPF não encontrado. Preencha os dados para cadastro.',
           isError: false,
@@ -455,11 +503,16 @@ class _CrmScreenState extends State<CrmScreen> {
     } catch (e) {
       print('❌ Erro na consulta: $e');
       setState(() => _isLoading = false);
-      _mostrarSnackBar('Erro na consulta: ${e.toString()}', isError: true);
+      _mostrarSnackBar(
+        'Erro na consulta: ${e.toString().replaceAll('Exception: ', '')}',
+        isError: true,
+      );
     }
   }
 
-  // Confirmar cadastro
+  // ===========================================================================
+  // CADASTRAR CLIENTE
+  // ===========================================================================
   Future<void> _confirmarCadastro() async {
     if (!_validarCamposObrigatorios()) return;
 
@@ -471,42 +524,28 @@ class _CrmScreenState extends State<CrmScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final sucesso = await ApiService.cadastrarCliente(
-        cpf: _cpfController.text, // Enviará com máscara: XXX.XXX.XXX-XX
+      // ✅ Agora retorna o cliente cadastrado
+      final clienteCadastrado = await ApiService.cadastrarCliente(
+        cpf: _cpfController.text,
         nome: _nomeController.text.trim(),
-        telefone:
-            _telefoneController.text, // Enviará com máscara: (XX) XXXXX-XXXX
+        telefone: _telefoneController.text,
         email: _emailController.text.trim(),
       );
 
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+        _clienteEncontrado = clienteCadastrado; // ✅ Guarda o cliente cadastrado
+      });
 
-      if (sucesso) {
-        _mostrarSnackBar('Cliente cadastrado com sucesso!', isError: false);
-        await Future.delayed(const Duration(seconds: 2));
-        _navegarParaProximaTela();
-      } else {
-        _mostrarSnackBar('Erro ao cadastrar cliente.', isError: true);
-      }
+      _mostrarSnackBar('Cliente cadastrado com sucesso!', isError: false);
+      await Future.delayed(const Duration(seconds: 2));
+      _navegarParaProximaTela();
     } catch (e) {
       setState(() => _isLoading = false);
-
-      // Tratamento de erros específicos
-      String mensagemErro = e.toString();
-      if (mensagemErro.contains('CPF') &&
-          mensagemErro.contains('já está cadastrado')) {
-        _mostrarSnackBar('CPF já está cadastrado no sistema.', isError: true);
-      } else if (mensagemErro.contains('Email') &&
-          mensagemErro.contains('já está cadastrado')) {
-        _mostrarSnackBar('Email já está cadastrado no sistema.', isError: true);
-      } else if (mensagemErro.contains('sistema Linx indisponível')) {
-        _mostrarSnackBar(
-          'Sistema temporariamente indisponível. Tente novamente.',
-          isError: true,
-        );
-      } else {
-        _mostrarSnackBar('Erro no cadastro: ${e.toString()}', isError: true);
-      }
+      _mostrarSnackBar(
+        e.toString().replaceAll('Exception: ', ''),
+        isError: true,
+      );
     }
   }
 
@@ -516,13 +555,18 @@ class _CrmScreenState extends State<CrmScreen> {
       return false;
     }
 
+    if (_nomeController.text.trim().length < 3) {
+      _mostrarSnackBar('Nome deve ter pelo menos 3 caracteres.', isError: true);
+      return false;
+    }
+
     String telefone = _telefoneController.text.replaceAll(RegExp(r'\D'), '');
     if (telefone.length != 11) {
       _mostrarSnackBar('Telefone deve ter 11 dígitos.', isError: true);
       return false;
     }
 
-    if (!isValidEmail(_emailController.text.trim())) {
+    if (!_isValidEmail(_emailController.text.trim())) {
       _mostrarSnackBar('Email inválido.', isError: true);
       return false;
     }
@@ -530,44 +574,47 @@ class _CrmScreenState extends State<CrmScreen> {
     return true;
   }
 
-  void _mostrarSnackBar(String mensagem, {required bool isError}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(mensagem),
-        backgroundColor: isError ? Colors.red : Colors.green,
-        duration: const Duration(seconds: 3),
-      ),
-    );
-  }
-
+  // ===========================================================================
+  // NAVEGAÇÃO
+  // ===========================================================================
   void _navegarParaProximaTela() {
-    // Determinar nome do cliente
     String nomeCliente;
-    bool isNovoCliente = false;
-    Map<String, dynamic> dadosCliente; // ✅ NOVO
+    bool isNovoCliente;
+    Map<String, dynamic> dadosCliente;
 
     if (_cpfEncontrado && _clienteEncontrado != null) {
       // Cliente existente encontrado
       nomeCliente = _clienteEncontrado!.nome ?? 'Cliente';
       isNovoCliente = false;
 
-      // ✅ NOVO: Montar dados do cliente
       dadosCliente = {
-        'pessoa_id': _clienteEncontrado!.id,
+        'pessoa_id': _clienteEncontrado!.grid, // ✅ Usando 'grid' como ID
         'pessoa_nome': _clienteEncontrado!.nome ?? '',
-        'pessoa_cpf': _cpfController.text,
+        'pessoa_cpf': _clienteEncontrado!.cpf ?? _cpfController.text,
         'pessoa_email': _clienteEncontrado!.email ?? '',
+        'pessoa_telefone': _clienteEncontrado!.telefoneDisponivel ?? '',
+      };
+    } else if (_clienteEncontrado != null) {
+      // Novo cliente cadastrado (retornado pela API)
+      nomeCliente = _clienteEncontrado!.nome ?? _nomeController.text.trim();
+      isNovoCliente = true;
+
+      dadosCliente = {
+        'pessoa_id': _clienteEncontrado!.grid, // ✅ ID retornado pela API
+        'pessoa_nome': _clienteEncontrado!.nome ?? _nomeController.text.trim(),
+        'pessoa_cpf': _clienteEncontrado!.cpf ?? _cpfController.text,
+        'pessoa_email':
+            _clienteEncontrado!.email ?? _emailController.text.trim(),
         'pessoa_telefone':
-            _clienteEncontrado!.celular ?? _clienteEncontrado!.telefone ?? '',
+            _clienteEncontrado!.telefoneDisponivel ?? _telefoneController.text,
       };
     } else {
-      // Novo cliente cadastrado
+      // Fallback (não deveria acontecer)
       nomeCliente = _nomeController.text.trim();
       isNovoCliente = true;
 
-      // ✅ NOVO: Montar dados do cliente novo
       dadosCliente = {
-        'pessoa_id': 0, // Será atualizado após cadastro bem-sucedido
+        'pessoa_id': 0,
         'pessoa_nome': _nomeController.text.trim(),
         'pessoa_cpf': _cpfController.text,
         'pessoa_email': _emailController.text.trim(),
@@ -575,15 +622,27 @@ class _CrmScreenState extends State<CrmScreen> {
       };
     }
 
-    // Navegar para tela de boas-vindas animada
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder:
             (context) => BoasVindasScreen(
               nomeCliente: nomeCliente,
               isNovoCliente: isNovoCliente,
-              dadosCliente: dadosCliente, // ✅ NOVO
+              dadosCliente: dadosCliente,
             ),
+      ),
+    );
+  }
+
+  // ===========================================================================
+  // HELPERS UI
+  // ===========================================================================
+  void _mostrarSnackBar(String mensagem, {required bool isError}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(mensagem),
+        backgroundColor: isError ? Colors.red : Colors.green,
+        duration: const Duration(seconds: 3),
       ),
     );
   }
@@ -600,22 +659,22 @@ class _CrmScreenState extends State<CrmScreen> {
     });
   }
 
-  // ----------------- UI -----------------
+  // ===========================================================================
+  // UI WIDGETS
+  // ===========================================================================
   Widget _topHeader() {
-    // Calcular minutos e segundos para display
     final minutes = _inactivitySeconds ~/ 60;
     final seconds = _inactivitySeconds % 60;
     final timeDisplay =
         '${minutes.toString().padLeft(1, '0')}:${seconds.toString().padLeft(2, '0')}';
 
-    // Definir cor do timer baseado no tempo restante
     Color timerColor;
     if (_inactivitySeconds > 60) {
-      timerColor = Colors.white; // Verde: mais de 1 minuto
+      timerColor = Colors.white;
     } else if (_inactivitySeconds > 30) {
-      timerColor = Colors.orange; // Laranja: entre 30s e 1min
+      timerColor = Colors.orange;
     } else {
-      timerColor = Colors.red; // Vermelho: menos de 30s
+      timerColor = Colors.red;
     }
 
     return Container(
@@ -625,44 +684,31 @@ class _CrmScreenState extends State<CrmScreen> {
         bottom: false,
         child: Row(
           children: [
-            // ✅ LOGO LINX (Placeholder - substitua por Image.asset quando tiver a imagem)
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
+            // Logo
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.business, color: roxo, size: 18),
+                  const SizedBox(width: 6),
+                  Text(
+                    'TOTEM',
+                    style: TextStyle(
+                      color: roxo,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      letterSpacing: 1.2,
+                    ),
                   ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.business, color: roxo, size: 18),
-                      const SizedBox(width: 6),
-                      Text(
-                        'LINX',
-                        style: TextStyle(
-                          color: roxo,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          letterSpacing: 1.2,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // ✅ Quando tiver a imagem do logo, substitua o Container acima por:
-                // Image.asset(
-                //   'assets/images/logo_linx.png',
-                //   height: 30,
-                //   fit: BoxFit.contain,
-                // ),
-              ],
+                ],
+              ),
             ),
             const Spacer(),
-            // ✅ TIMER DE INATIVIDADE
+            // Timer
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
@@ -701,7 +747,7 @@ class _CrmScreenState extends State<CrmScreen> {
             IconButton(
               onPressed: () {
                 _limparFormulario();
-                _resetarTimerInatividade(); // ✅ Reset timer ao interagir
+                _resetarTimerInatividade();
               },
               icon: const Icon(Icons.refresh, color: Colors.white),
               tooltip: 'Limpar formulário',
@@ -713,23 +759,15 @@ class _CrmScreenState extends State<CrmScreen> {
   }
 
   Widget _banner() {
-    final double h = 240; // ajuste fino: 180–240
-
     return Container(
-      height: h,
+      height: 240,
       decoration: const BoxDecoration(
         color: Colors.white,
         boxShadow: [
           BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2)),
         ],
       ),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          // Imagem do banner
-          Image.asset('assets/images/banner.jpg', fit: BoxFit.cover),
-        ],
-      ),
+      child: Image.asset('assets/images/banner.jpg', fit: BoxFit.cover),
     );
   }
 
@@ -752,7 +790,7 @@ class _CrmScreenState extends State<CrmScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Logo e título
+          // Título
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -776,9 +814,7 @@ class _CrmScreenState extends State<CrmScreen> {
               ),
             ],
           ),
-
           const SizedBox(height: 8),
-
           Text(
             _mostrarCamposAdicionais
                 ? 'Complete seus dados para continuar'
@@ -791,75 +827,10 @@ class _CrmScreenState extends State<CrmScreen> {
             textAlign: TextAlign.center,
           ),
 
-          // Exibir dados do cliente encontrado
+          // Cliente encontrado
           if (_cpfEncontrado && _clienteEncontrado != null) ...[
             const SizedBox(height: 20),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 500),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.green.shade50, Colors.green.shade100],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.green.shade300, width: 1.5),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.green.withOpacity(0.2),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.green,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.person_outline,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Cliente Encontrado!',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green.shade700,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                      Icon(
-                        Icons.check_circle,
-                        color: Colors.green.shade600,
-                        size: 24,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Divider(color: Colors.green.shade300, height: 1),
-                  const SizedBox(height: 12),
-                  _buildInfoRow('Nome', _clienteEncontrado!.nome ?? 'N/A'),
-                  if (_clienteEncontrado!.email != null &&
-                      _clienteEncontrado!.email!.isNotEmpty)
-                    _buildInfoRow('Email', _clienteEncontrado!.email!),
-                  if (_clienteEncontrado!.celular != null &&
-                      _clienteEncontrado!.celular!.isNotEmpty)
-                    _buildInfoRow('Celular', _clienteEncontrado!.celular!),
-                ],
-              ),
-            ),
+            _buildClienteEncontradoCard(),
           ],
 
           const SizedBox(height: 20),
@@ -875,7 +846,7 @@ class _CrmScreenState extends State<CrmScreen> {
             enabled: !_mostrarCamposAdicionais && !_cpfEncontrado,
           ),
 
-          // Campos adicionais (aparecem apenas se CPF não for encontrado)
+          // Campos adicionais
           if (_mostrarCamposAdicionais) ...[
             const SizedBox(height: 16),
             _buildTextField(
@@ -885,7 +856,6 @@ class _CrmScreenState extends State<CrmScreen> {
               icon: Icons.person,
               textCapitalization: TextCapitalization.words,
             ),
-
             const SizedBox(height: 16),
             _buildTextField(
               controller: _telefoneController,
@@ -895,7 +865,6 @@ class _CrmScreenState extends State<CrmScreen> {
               keyboardType: TextInputType.phone,
               inputFormatters: [_telefoneMask],
             ),
-
             const SizedBox(height: 16),
             _buildTextField(
               controller: _emailController,
@@ -918,7 +887,7 @@ class _CrmScreenState extends State<CrmScreen> {
                       _isLoading
                           ? null
                           : () {
-                            _resetarTimerInatividade(); // ✅ Reset timer
+                            _resetarTimerInatividade();
                             Navigator.of(context).maybePop();
                           },
                   style: OutlinedButton.styleFrom(
@@ -945,7 +914,7 @@ class _CrmScreenState extends State<CrmScreen> {
                       _isLoading
                           ? null
                           : () {
-                            _resetarTimerInatividade(); // ✅ Reset timer
+                            _resetarTimerInatividade();
                             if (_cpfEncontrado) {
                               _navegarParaProximaTela();
                             } else if (_mostrarCamposAdicionais) {
@@ -995,6 +964,69 @@ class _CrmScreenState extends State<CrmScreen> {
     );
   }
 
+  Widget _buildClienteEncontradoCard() {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 500),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.green.shade50, Colors.green.shade100],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.green.shade300, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.green.withOpacity(0.2),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.green,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.person_outline,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Cliente Encontrado!',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green.shade700,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+              Icon(Icons.check_circle, color: Colors.green.shade600, size: 24),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Divider(color: Colors.green.shade300, height: 1),
+          const SizedBox(height: 12),
+          _buildInfoRow('Nome', _clienteEncontrado!.nome ?? 'N/A'),
+          if (_clienteEncontrado!.email?.isNotEmpty == true)
+            _buildInfoRow('Email', _clienteEncontrado!.email!),
+          if (_clienteEncontrado!.telefoneDisponivel?.isNotEmpty == true)
+            _buildInfoRow('Telefone', _clienteEncontrado!.telefoneDisponivel!),
+        ],
+      ),
+    );
+  }
+
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
@@ -1013,7 +1045,6 @@ class _CrmScreenState extends State<CrmScreen> {
       enabled: enabled,
       textCapitalization: textCapitalization,
       textInputAction: textInputAction,
-      // ✅ NOVO: Reset timer ao digitar
       onChanged: (_) => _resetarTimerInatividade(),
       onTap: _resetarTimerInatividade,
       decoration: InputDecoration(
@@ -1053,7 +1084,7 @@ class _CrmScreenState extends State<CrmScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 60,
+            width: 70,
             child: Text(
               '$label:',
               style: TextStyle(
@@ -1078,11 +1109,12 @@ class _CrmScreenState extends State<CrmScreen> {
     );
   }
 
-  // ----------------- Build -----------------
+  // ===========================================================================
+  // BUILD
+  // ===========================================================================
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      // ✅ Reset timer ao tocar na tela
       onTap: _resetarTimerInatividade,
       onPanDown: (_) => _resetarTimerInatividade(),
       behavior: HitTestBehavior.translucent,

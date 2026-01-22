@@ -4,7 +4,7 @@
             "outputFile": "com.example.autoatendimento.app-mergeDebugResources-24:/values-night-v8/values-night-v8.xml",
             "map": [
                 {
-                    "source": "D:\\Projeto de Deus\\autoatendimento\\android\\app\\src\\main\\res\\values-night\\styles.xml",
+                    "source": "D:\\Projeto de Deus\\totem Autosystem\\autoatendimento\\android\\app\\src\\main\\res\\values-night\\styles.xml",
                     "from": {
                         "startLines": "3,14",
                         "startColumns": "4,4",

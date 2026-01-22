@@ -18,10 +18,10 @@ com.example.autoatendimento.app-jetified-lifecycle-process-2.7.0-16 C:\Users\Cle
 com.example.autoatendimento.app-jetified-lifecycle-livedata-core-ktx-2.7.0-17 C:\Users\Cleno Silva\.gradle\caches\8.10.2\transforms\ebeb29d7113d60e59d5e0acf92f847f3\transformed\jetified-lifecycle-livedata-core-ktx-2.7.0\res
 com.example.autoatendimento.app-jetified-annotation-experimental-1.4.0-18 C:\Users\Cleno Silva\.gradle\caches\8.10.2\transforms\f09a22cdd213028a38958888c7d16e20\transformed\jetified-annotation-experimental-1.4.0\res
 com.example.autoatendimento.app-core-runtime-2.2.0-19 C:\Users\Cleno Silva\.gradle\caches\8.10.2\transforms\ff849810dfe34a0ab790c402787c149e\transformed\core-runtime-2.2.0\res
-com.example.autoatendimento.app-debug-20 D:\Projeto de Deus\autoatendimento\android\app\src\debug\res
-com.example.autoatendimento.app-main-21 D:\Projeto de Deus\autoatendimento\android\app\src\main\res
-com.example.autoatendimento.app-pngs-22 D:\Projeto de Deus\autoatendimento\build\app\generated\res\pngs\debug
-com.example.autoatendimento.app-resValues-23 D:\Projeto de Deus\autoatendimento\build\app\generated\res\resValues\debug
-com.example.autoatendimento.app-packageDebugResources-24 D:\Projeto de Deus\autoatendimento\build\app\intermediates\incremental\debug\packageDebugResources\merged.dir
-com.example.autoatendimento.app-packageDebugResources-25 D:\Projeto de Deus\autoatendimento\build\app\intermediates\incremental\debug\packageDebugResources\stripped.dir
-com.example.autoatendimento.app-debug-26 D:\Projeto de Deus\autoatendimento\build\app\intermediates\merged_res\debug\mergeDebugResources
+com.example.autoatendimento.app-debug-20 D:\Projeto de Deus\totem Autosystem\autoatendimento\android\app\src\debug\res
+com.example.autoatendimento.app-main-21 D:\Projeto de Deus\totem Autosystem\autoatendimento\android\app\src\main\res
+com.example.autoatendimento.app-pngs-22 D:\Projeto de Deus\totem Autosystem\autoatendimento\build\app\generated\res\pngs\debug
+com.example.autoatendimento.app-resValues-23 D:\Projeto de Deus\totem Autosystem\autoatendimento\build\app\generated\res\resValues\debug
+com.example.autoatendimento.app-packageDebugResources-24 D:\Projeto de Deus\totem Autosystem\autoatendimento\build\app\intermediates\incremental\debug\packageDebugResources\merged.dir
+com.example.autoatendimento.app-packageDebugResources-25 D:\Projeto de Deus\totem Autosystem\autoatendimento\build\app\intermediates\incremental\debug\packageDebugResources\stripped.dir
+com.example.autoatendimento.app-debug-26 D:\Projeto de Deus\totem Autosystem\autoatendimento\build\app\intermediates\merged_res\debug\mergeDebugResources
