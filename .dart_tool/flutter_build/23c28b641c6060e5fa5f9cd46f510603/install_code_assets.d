@@ -1,0 +1,1 @@
+ D:\\Projeto\ de\ Deus\\autoatendimento\\.dart_tool\\flutter_build\\23c28b641c6060e5fa5f9cd46f510603\\native_assets.json: 
