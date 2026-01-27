@@ -26,6 +26,8 @@ MERGED from D:\Projeto de Deus\totem Autosystem\autoatendimento\android\app\src\
 INJECTED from D:\Projeto de Deus\totem Autosystem\autoatendimento\android\app\src\debug\AndroidManifest.xml:1:1-7:12
 INJECTED from D:\Projeto de Deus\totem Autosystem\autoatendimento\android\app\src\debug\AndroidManifest.xml:1:1-7:12
 INJECTED from D:\Projeto de Deus\totem Autosystem\autoatendimento\android\app\src\debug\AndroidManifest.xml:1:1-7:12
+MERGED from [:path_provider_android] D:\Projeto de Deus\totem Autosystem\autoatendimento\build\path_provider_android\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:2:1-7:12
+MERGED from [:sqflite_android] D:\Projeto de Deus\totem Autosystem\autoatendimento\build\sqflite_android\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.fragment:fragment:1.7.1] C:\Users\Cleno Silva\.gradle\caches\8.10.2\transforms\55520e4df2220e27f13f0bbb7467d11a\transformed\fragment-1.7.1\AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.window:window:1.2.0] C:\Users\Cleno Silva\.gradle\caches\8.10.2\transforms\5093ab42d2307deb2d7ac0b7f5718c38\transformed\jetified-window-1.2.0\AndroidManifest.xml:17:1-31:12
 MERGED from [androidx.window:window-java:1.2.0] C:\Users\Cleno Silva\.gradle\caches\8.10.2\transforms\c1f85211ae6978d0218d51595a7f7e62\transformed\jetified-window-java-1.2.0\AndroidManifest.xml:17:1-21:12
@@ -43,7 +45,6 @@ MERGED from [androidx.core:core:1.13.1] C:\Users\Cleno Silva\.gradle\caches\8.10
 MERGED from [androidx.lifecycle:lifecycle-runtime:2.7.0] C:\Users\Cleno Silva\.gradle\caches\8.10.2\transforms\c092edbccc16347970ed4f22e8da111a\transformed\lifecycle-runtime-2.7.0\AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.lifecycle:lifecycle-process:2.7.0] C:\Users\Cleno Silva\.gradle\caches\8.10.2\transforms\e80aa748ff6540407d8dba61c0d945fe\transformed\jetified-lifecycle-process-2.7.0\AndroidManifest.xml:17:1-35:12
 MERGED from [androidx.savedstate:savedstate:1.2.1] C:\Users\Cleno Silva\.gradle\caches\8.10.2\transforms\b3d51a44ab6b56289d4858158a1ad6dd\transformed\jetified-savedstate-1.2.1\AndroidManifest.xml:17:1-22:12
-MERGED from [androidx.annotation:annotation-experimental:1.4.0] C:\Users\Cleno Silva\.gradle\caches\8.10.2\transforms\f09a22cdd213028a38958888c7d16e20\transformed\jetified-annotation-experimental-1.4.0\AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Cleno Silva\.gradle\caches\8.10.2\transforms\5f7dcf6815bacc3ae7f099ba801348de\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:17:1-55:12
 MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\Cleno Silva\.gradle\caches\8.10.2\transforms\e0d9d3675465ff69d847e2f781f20c61\transformed\jetified-startup-runtime-1.1.1\AndroidManifest.xml:17:1-33:12
 MERGED from [androidx.tracing:tracing:1.2.0] C:\Users\Cleno Silva\.gradle\caches\8.10.2\transforms\285b6d6abe2dd4ba9515886e610a7341\transformed\jetified-tracing-1.2.0\AndroidManifest.xml:17:1-22:12
@@ -51,6 +52,7 @@ MERGED from [androidx.arch.core:core-runtime:2.2.0] C:\Users\Cleno Silva\.gradle
 MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\Cleno Silva\.gradle\caches\8.10.2\transforms\92a2169b5b2674c8bbe10e1b1d80da0f\transformed\versionedparcelable-1.1.1\AndroidManifest.xml:17:1-27:12
 MERGED from [androidx.interpolator:interpolator:1.0.0] C:\Users\Cleno Silva\.gradle\caches\8.10.2\transforms\ccaaf8ba0ff17d4bbcf5fc9064ae7a64\transformed\interpolator-1.0.0\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.window.extensions.core:core:1.0.0] C:\Users\Cleno Silva\.gradle\caches\8.10.2\transforms\47506b70b93177473c53f4d5d7e77c91\transformed\jetified-core-1.0.0\AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.annotation:annotation-experimental:1.4.0] C:\Users\Cleno Silva\.gradle\caches\8.10.2\transforms\f09a22cdd213028a38958888c7d16e20\transformed\jetified-annotation-experimental-1.4.0\AndroidManifest.xml:2:1-7:12
 MERGED from [com.getkeepsafe.relinker:relinker:1.4.5] C:\Users\Cleno Silva\.gradle\caches\8.10.2\transforms\9e1412f82216e9a99f9f845f4567c1f2\transformed\jetified-relinker-1.4.5\AndroidManifest.xml:2:1-7:12
 	package
 		INJECTED from D:\Projeto de Deus\totem Autosystem\autoatendimento\android\app\src\debug\AndroidManifest.xml
@@ -80,6 +82,10 @@ uses-sdk
 INJECTED from D:\Projeto de Deus\totem Autosystem\autoatendimento\android\app\src\debug\AndroidManifest.xml reason: use-sdk injection requested
 INJECTED from D:\Projeto de Deus\totem Autosystem\autoatendimento\android\app\src\debug\AndroidManifest.xml
 INJECTED from D:\Projeto de Deus\totem Autosystem\autoatendimento\android\app\src\debug\AndroidManifest.xml
+MERGED from [:path_provider_android] D:\Projeto de Deus\totem Autosystem\autoatendimento\build\path_provider_android\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:5:5-44
+MERGED from [:path_provider_android] D:\Projeto de Deus\totem Autosystem\autoatendimento\build\path_provider_android\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:5:5-44
+MERGED from [:sqflite_android] D:\Projeto de Deus\totem Autosystem\autoatendimento\build\sqflite_android\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:5:5-44
+MERGED from [:sqflite_android] D:\Projeto de Deus\totem Autosystem\autoatendimento\build\sqflite_android\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:5:5-44
 MERGED from [androidx.fragment:fragment:1.7.1] C:\Users\Cleno Silva\.gradle\caches\8.10.2\transforms\55520e4df2220e27f13f0bbb7467d11a\transformed\fragment-1.7.1\AndroidManifest.xml:5:5-44
 MERGED from [androidx.fragment:fragment:1.7.1] C:\Users\Cleno Silva\.gradle\caches\8.10.2\transforms\55520e4df2220e27f13f0bbb7467d11a\transformed\fragment-1.7.1\AndroidManifest.xml:5:5-44
 MERGED from [androidx.window:window:1.2.0] C:\Users\Cleno Silva\.gradle\caches\8.10.2\transforms\5093ab42d2307deb2d7ac0b7f5718c38\transformed\jetified-window-1.2.0\AndroidManifest.xml:20:5-44
@@ -114,8 +120,6 @@ MERGED from [androidx.lifecycle:lifecycle-process:2.7.0] C:\Users\Cleno Silva\.g
 MERGED from [androidx.lifecycle:lifecycle-process:2.7.0] C:\Users\Cleno Silva\.gradle\caches\8.10.2\transforms\e80aa748ff6540407d8dba61c0d945fe\transformed\jetified-lifecycle-process-2.7.0\AndroidManifest.xml:21:5-44
 MERGED from [androidx.savedstate:savedstate:1.2.1] C:\Users\Cleno Silva\.gradle\caches\8.10.2\transforms\b3d51a44ab6b56289d4858158a1ad6dd\transformed\jetified-savedstate-1.2.1\AndroidManifest.xml:20:5-44
 MERGED from [androidx.savedstate:savedstate:1.2.1] C:\Users\Cleno Silva\.gradle\caches\8.10.2\transforms\b3d51a44ab6b56289d4858158a1ad6dd\transformed\jetified-savedstate-1.2.1\AndroidManifest.xml:20:5-44
-MERGED from [androidx.annotation:annotation-experimental:1.4.0] C:\Users\Cleno Silva\.gradle\caches\8.10.2\transforms\f09a22cdd213028a38958888c7d16e20\transformed\jetified-annotation-experimental-1.4.0\AndroidManifest.xml:5:5-44
-MERGED from [androidx.annotation:annotation-experimental:1.4.0] C:\Users\Cleno Silva\.gradle\caches\8.10.2\transforms\f09a22cdd213028a38958888c7d16e20\transformed\jetified-annotation-experimental-1.4.0\AndroidManifest.xml:5:5-44
 MERGED from [androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Cleno Silva\.gradle\caches\8.10.2\transforms\5f7dcf6815bacc3ae7f099ba801348de\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:21:5-44
 MERGED from [androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Cleno Silva\.gradle\caches\8.10.2\transforms\5f7dcf6815bacc3ae7f099ba801348de\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:21:5-44
 MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\Cleno Silva\.gradle\caches\8.10.2\transforms\e0d9d3675465ff69d847e2f781f20c61\transformed\jetified-startup-runtime-1.1.1\AndroidManifest.xml:21:5-23:41
@@ -130,6 +134,8 @@ MERGED from [androidx.interpolator:interpolator:1.0.0] C:\Users\Cleno Silva\.gra
 MERGED from [androidx.interpolator:interpolator:1.0.0] C:\Users\Cleno Silva\.gradle\caches\8.10.2\transforms\ccaaf8ba0ff17d4bbcf5fc9064ae7a64\transformed\interpolator-1.0.0\AndroidManifest.xml:20:5-44
 MERGED from [androidx.window.extensions.core:core:1.0.0] C:\Users\Cleno Silva\.gradle\caches\8.10.2\transforms\47506b70b93177473c53f4d5d7e77c91\transformed\jetified-core-1.0.0\AndroidManifest.xml:5:5-44
 MERGED from [androidx.window.extensions.core:core:1.0.0] C:\Users\Cleno Silva\.gradle\caches\8.10.2\transforms\47506b70b93177473c53f4d5d7e77c91\transformed\jetified-core-1.0.0\AndroidManifest.xml:5:5-44
+MERGED from [androidx.annotation:annotation-experimental:1.4.0] C:\Users\Cleno Silva\.gradle\caches\8.10.2\transforms\f09a22cdd213028a38958888c7d16e20\transformed\jetified-annotation-experimental-1.4.0\AndroidManifest.xml:5:5-44
+MERGED from [androidx.annotation:annotation-experimental:1.4.0] C:\Users\Cleno Silva\.gradle\caches\8.10.2\transforms\f09a22cdd213028a38958888c7d16e20\transformed\jetified-annotation-experimental-1.4.0\AndroidManifest.xml:5:5-44
 MERGED from [com.getkeepsafe.relinker:relinker:1.4.5] C:\Users\Cleno Silva\.gradle\caches\8.10.2\transforms\9e1412f82216e9a99f9f845f4567c1f2\transformed\jetified-relinker-1.4.5\AndroidManifest.xml:5:5-43
 MERGED from [com.getkeepsafe.relinker:relinker:1.4.5] C:\Users\Cleno Silva\.gradle\caches\8.10.2\transforms\9e1412f82216e9a99f9f845f4567c1f2\transformed\jetified-relinker-1.4.5\AndroidManifest.xml:5:5-43
 	android:targetSdkVersion

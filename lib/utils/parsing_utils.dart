@@ -1,180 +1,90 @@
 // lib/utils/parsing_utils.dart
-// UTILITÁRIOS PARA PARSING SEGURO DE DADOS DA API
-
-import 'package:flutter/foundation.dart';
+// Utilitários para parsing seguro de dados JSON do backend
 
 class ParsingUtils {
-  /// Converte qualquer valor para double de forma segura
-  static double? parseDouble(dynamic value, {double? defaultValue}) {
-    if (value == null) return defaultValue;
-
-    try {
-      if (value is double) return value;
-      if (value is int) return value.toDouble();
-      if (value is String) {
-        final parsed = double.tryParse(value.trim());
-        return parsed ?? defaultValue;
-      }
-      if (value is num) return value.toDouble();
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint(
-          '⚠️ Erro ao converter para double: $value (${value.runtimeType}) - $e',
-        );
-      }
+  /// Parse seguro para int - aceita int, double ou String
+  static int? parseInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    if (value is String) {
+      return int.tryParse(value) ?? double.tryParse(value)?.toInt();
     }
-
-    return defaultValue;
+    return null;
   }
 
-  /// Converte qualquer valor para int de forma segura
-  static int? parseInt(dynamic value, {int? defaultValue}) {
-    if (value == null) return defaultValue;
-
-    try {
-      if (value is int) return value;
-      if (value is double) return value.toInt();
-      if (value is String) {
-        final parsed = int.tryParse(value.trim());
-        return parsed ?? defaultValue;
+  /// Parse seguro para double - aceita int, double ou String
+  static double? parseDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) {
+      // Trata formato brasileiro (1.234,56) e americano (1,234.56)
+      String normalized = value.replaceAll(' ', '');
+      // Se tem vírgula como decimal (formato BR)
+      if (normalized.contains(',') && !normalized.contains('.')) {
+        normalized = normalized.replaceAll(',', '.');
+      } else if (normalized.contains(',') && normalized.contains('.')) {
+        // Formato 1.234,56 -> 1234.56
+        normalized = normalized.replaceAll('.', '').replaceAll(',', '.');
       }
-      if (value is num) return value.toInt();
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint(
-          '⚠️ Erro ao converter para int: $value (${value.runtimeType}) - $e',
-        );
-      }
+      return double.tryParse(normalized);
     }
-
-    return defaultValue;
+    return null;
   }
 
-  /// Converte qualquer valor para bool de forma segura
-  static bool? parseBool(dynamic value, {bool? defaultValue}) {
-    if (value == null) return defaultValue;
-
-    try {
-      if (value is bool) return value;
-      if (value is int) return value != 0;
-      if (value is double) return value != 0.0;
-      if (value is String) {
-        final lowerValue = value.trim().toLowerCase();
-        if (lowerValue == 'true' || lowerValue == '1') return true;
-        if (lowerValue == 'false' || lowerValue == '0') return false;
+  /// Parse seguro para bool - aceita bool, int, String
+  static bool? parseBool(dynamic value) {
+    if (value == null) return null;
+    if (value is bool) return value;
+    if (value is int) return value != 0;
+    if (value is String) {
+      final lower = value.toLowerCase();
+      if (lower == 'true' || lower == '1' || lower == 's' || lower == 'sim') {
+        return true;
       }
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint(
-          '⚠️ Erro ao converter para bool: $value (${value.runtimeType}) - $e',
-        );
+      if (lower == 'false' || lower == '0' || lower == 'n' || lower == 'nao' || lower == 'não') {
+        return false;
       }
     }
-
-    return defaultValue;
+    return null;
   }
 
-  /// Converte qualquer valor para String de forma segura
-  static String? parseString(dynamic value, {String? defaultValue}) {
-    if (value == null) return defaultValue;
-
-    try {
-      if (value is String) return value.isEmpty ? defaultValue : value;
-      return value.toString();
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint(
-          '⚠️ Erro ao converter para String: $value (${value.runtimeType}) - $e',
-        );
-      }
+  /// Parse seguro para DateTime
+  static DateTime? parseDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    if (value is String) {
+      return DateTime.tryParse(value);
     }
-
-    return defaultValue;
+    return null;
   }
 
-  /// Log de debug para valores problemáticos
-  static void debugValue(String campo, dynamic value) {
-    if (kDebugMode) {
-      debugPrint('🔍 Debug $campo: $value (${value.runtimeType})');
-    }
-  }
-
-  /// Valida se um JSON tem as chaves esperadas
-  static bool validateJsonKeys(
-    Map<String, dynamic> json,
-    List<String> requiredKeys,
-  ) {
-    final missingKeys =
-        requiredKeys.where((key) => !json.containsKey(key)).toList();
-
-    if (missingKeys.isNotEmpty && kDebugMode) {
-      debugPrint('⚠️ Chaves faltantes no JSON: $missingKeys');
-      debugPrint('🔍 Chaves disponíveis: ${json.keys.toList()}');
-    }
-
-    return missingKeys.isEmpty;
-  }
-
-  /// Extrai valor aninhado de JSON de forma segura
-  static dynamic safeGet(
-    Map<String, dynamic> json,
-    String path, {
-    dynamic defaultValue,
-  }) {
-    try {
-      final keys = path.split('.');
-      dynamic current = json;
-
-      for (final key in keys) {
-        if (current is Map<String, dynamic> && current.containsKey(key)) {
-          current = current[key];
-        } else {
-          return defaultValue;
-        }
-      }
-
-      return current;
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('⚠️ Erro ao extrair $path do JSON: $e');
-      }
-      return defaultValue;
-    }
-  }
-
-  /// Converte lista de forma segura
+  /// Parse seguro para List
   static List<T> parseList<T>(
     dynamic value,
-    T Function(dynamic) parser, {
-    List<T>? defaultValue,
-  }) {
-    if (value == null) return defaultValue ?? [];
+    T Function(Map<String, dynamic>) fromJson,
+  ) {
+    if (value == null) return [];
+    if (value is! List) return [];
+    return value
+        .whereType<Map<String, dynamic>>()
+        .map((e) => fromJson(e))
+        .toList();
+  }
 
-    try {
-      if (value is List) {
-        return value
-            .map((item) {
-              try {
-                return parser(item);
-              } catch (e) {
-                if (kDebugMode) {
-                  debugPrint('⚠️ Erro ao converter item da lista: $item - $e');
-                }
-                return null;
-              }
-            })
-            .where((item) => item != null)
-            .cast<T>()
-            .toList();
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint(
-          '⚠️ Erro ao converter lista: $value (${value.runtimeType}) - $e',
-        );
-      }
-    }
+  /// Formata valor monetário para exibição
+  static String formatCurrency(double? value) {
+    if (value == null) return 'R\$ 0,00';
+    return 'R\$ ${value.toStringAsFixed(2).replaceAll('.', ',')}';
+  }
 
-    return defaultValue ?? [];
+  /// Formata quantidade com unidade
+  static String formatQuantity(double? quantidade, String? unidade) {
+    if (quantidade == null) return '';
+    final qtdStr = quantidade == quantidade.toInt()
+        ? quantidade.toInt().toString()
+        : quantidade.toStringAsFixed(2).replaceAll('.', ',');
+    return unidade != null ? '$qtdStr $unidade' : qtdStr;
   }
 }
