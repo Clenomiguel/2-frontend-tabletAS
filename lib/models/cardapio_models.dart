@@ -6,190 +6,157 @@ import 'produto_models.dart';
 /// Cardápio principal
 class Cardapio {
   final int grid;
+  final int? codigo;
   final String nome;
-  final String? descricao;
   final int empresaId;
-  final bool ativo;
-  final int? ordem;
-  final String? horaInicio;
-  final String? horaFim;
-  final List<int>? diasSemana;
+  final int? tipo;
 
   Cardapio({
     required this.grid,
+    this.codigo,
     required this.nome,
-    this.descricao,
     required this.empresaId,
-    this.ativo = true,
-    this.ordem,
-    this.horaInicio,
-    this.horaFim,
-    this.diasSemana,
+    this.tipo,
   });
 
   factory Cardapio.fromJson(Map<String, dynamic> json) {
-    List<int>? diasSemana;
-    if (json['dias_semana'] is List) {
-      diasSemana = (json['dias_semana'] as List).map((e) => _toInt(e)).toList();
-    }
-
     return Cardapio(
       grid: _toInt(json['grid'] ?? json['id'] ?? 0),
+      codigo: json['codigo'] != null ? _toInt(json['codigo']) : null,
       nome: json['nome'] ?? '',
-      descricao: json['descricao'],
-      empresaId: _toInt(json['empresa_id'] ?? json['empresa'] ?? 0),
-      ativo:
-          json['ativo'] ?? json['situacao'] == 'A' || json['situacao'] == true,
-      ordem: json['ordem'] != null ? _toInt(json['ordem']) : null,
-      horaInicio: json['hora_inicio'],
-      horaFim: json['hora_fim'],
-      diasSemana: diasSemana,
+      empresaId: _toInt(json['empresa'] ?? json['empresa_id'] ?? 0),
+      tipo: json['tipo'] != null ? _toInt(json['tipo']) : null,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'grid': grid,
+      'codigo': codigo,
       'nome': nome,
-      'descricao': descricao,
-      'empresa_id': empresaId,
-      'ativo': ativo,
-      'ordem': ordem,
-      'hora_inicio': horaInicio,
-      'hora_fim': horaFim,
-      'dias_semana': diasSemana,
+      'empresa': empresaId,
+      'tipo': tipo,
     };
-  }
-
-  bool get isDisponivelAgora {
-    if (!ativo) return false;
-
-    final agora = DateTime.now();
-
-    if (diasSemana != null && diasSemana!.isNotEmpty) {
-      if (!diasSemana!.contains(agora.weekday % 7)) {
-        return false;
-      }
-    }
-
-    if (horaInicio != null && horaFim != null) {
-      final inicio = _parseTime(horaInicio!);
-      final fim = _parseTime(horaFim!);
-      final agoraMinutos = agora.hour * 60 + agora.minute;
-
-      if (fim > inicio) {
-        if (agoraMinutos < inicio || agoraMinutos > fim) {
-          return false;
-        }
-      } else {
-        if (agoraMinutos < inicio && agoraMinutos > fim) {
-          return false;
-        }
-      }
-    }
-
-    return true;
-  }
-
-  int _parseTime(String time) {
-    final parts = time.split(':');
-    if (parts.length >= 2) {
-      return int.parse(parts[0]) * 60 + int.parse(parts[1]);
-    }
-    return 0;
   }
 }
 
 /// Seção do cardápio (categoria)
 class CardapioSecao {
   final int grid;
-  final int cardapioId;
   final String nome;
-  final String? descricao;
-  final int? ordem;
+  final int? seq;
+  final int cardapioId;
   final bool ativo;
-  final String? imagemBase64;
-  final String? cor;
+  final int? parent;
+  final bool ativarPrecoPromocao;
 
   CardapioSecao({
     required this.grid,
-    required this.cardapioId,
     required this.nome,
-    this.descricao,
-    this.ordem,
+    this.seq,
+    required this.cardapioId,
     this.ativo = true,
-    this.imagemBase64,
-    this.cor,
+    this.parent,
+    this.ativarPrecoPromocao = false,
   });
 
   factory CardapioSecao.fromJson(Map<String, dynamic> json) {
     return CardapioSecao(
       grid: _toInt(json['grid'] ?? json['id'] ?? 0),
-      cardapioId: _toInt(json['cardapio_id'] ?? json['cardapio'] ?? 0),
       nome: json['nome'] ?? '',
-      descricao: json['descricao'],
-      ordem: json['ordem'] != null ? _toInt(json['ordem']) : null,
+      seq: json['seq'] != null ? _toInt(json['seq']) : null,
+      cardapioId: _toInt(json['cardapio'] ?? json['cardapio_id'] ?? 0),
       ativo: json['ativo'] ?? true,
-      imagemBase64: json['imagem'] ?? json['foto'],
-      cor: json['cor'],
+      parent: json['parent'] != null ? _toInt(json['parent']) : null,
+      ativarPrecoPromocao: json['ativar_preco_promocao'] ?? false,
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'grid': grid,
-      'cardapio_id': cardapioId,
-      'nome': nome,
-      'descricao': descricao,
-      'ordem': ordem,
-      'ativo': ativo,
-      'cor': cor,
-    };
+  /// Nome para exibição
+  String get nomeExibicao => nome.isNotEmpty ? nome : 'Seção';
+}
+
+/// Imagem da seção
+class SecaoImagem {
+  final int grid;
+  final int secaoId;
+  final String? ext;
+  final String? image;
+  final String? ts;
+
+  SecaoImagem({
+    required this.grid,
+    required this.secaoId,
+    this.ext,
+    this.image,
+    this.ts,
+  });
+
+  factory SecaoImagem.fromJson(Map<String, dynamic> json) {
+    return SecaoImagem(
+      grid: _toInt(json['grid'] ?? json['id'] ?? 0),
+      secaoId: _toInt(json['secao'] ?? 0),
+      ext: json['ext'],
+      image: json['image'],
+      ts: json['ts'],
+    );
   }
 }
 
-/// Produto do cardápio (vinculação produto-seção)
-class CardapioProduto {
+/// Composição do produto no cardápio (vínculo)
+class CardapioComposicao {
   final int grid;
+  final int seq;
   final int secaoId;
   final int produtoId;
-  final int? ordem;
-  final bool destaque;
-  final double? precoCardapio;
-  final Produto? produto;
+  final int cardapioId;
+  final bool ativo;
 
-  CardapioProduto({
+  CardapioComposicao({
     required this.grid,
+    required this.seq,
     required this.secaoId,
     required this.produtoId,
-    this.ordem,
-    this.destaque = false,
-    this.precoCardapio,
-    this.produto,
+    required this.cardapioId,
+    this.ativo = true,
+  });
+
+  factory CardapioComposicao.fromJson(Map<String, dynamic> json) {
+    return CardapioComposicao(
+      grid: _toInt(json['grid'] ?? json['id'] ?? 0),
+      seq: _toInt(json['seq'] ?? 0),
+      secaoId: _toInt(json['secao'] ?? 0),
+      produtoId: _toInt(json['produto'] ?? 0),
+      cardapioId: _toInt(json['cardapio'] ?? 0),
+      ativo: json['ativo'] ?? true,
+    );
+  }
+}
+
+/// Produto no cardápio (com composição e produto)
+class CardapioProduto {
+  final CardapioComposicao composicao;
+  final Produto produto;
+
+  CardapioProduto({
+    required this.composicao,
+    required this.produto,
   });
 
   factory CardapioProduto.fromJson(Map<String, dynamic> json) {
-    Produto? produto;
-    if (json['produto'] is Map) {
-      produto = Produto.fromJson(json['produto']);
-    }
-
     return CardapioProduto(
-      grid: _toInt(json['grid'] ?? json['id'] ?? 0),
-      secaoId: _toInt(json['secao_id'] ?? json['secao'] ?? 0),
-      produtoId: _toInt(json['produto_id'] ??
-          json['produto_grid'] ??
-          (json['produto'] is Map ? json['produto']['grid'] : 0)),
-      ordem: json['ordem'] != null ? _toInt(json['ordem']) : null,
-      destaque: json['destaque'] ?? false,
-      precoCardapio: json['preco_cardapio'] != null
-          ? _toDouble(json['preco_cardapio'])
-          : null,
-      produto: produto,
+      composicao: CardapioComposicao.fromJson(json['composicao'] ?? {}),
+      produto: Produto.fromJson(json['produto'] ?? {}),
     );
   }
 
-  double get precoEfetivo => precoCardapio ?? produto?.preco ?? 0;
+  // Getters de conveniência
+  int get grid => composicao.grid;
+  int get produtoId => produto.grid;
+  int get secaoId => composicao.secaoId;
+  int? get ordem => composicao.seq;
+  double get preco => produto.preco;
+  double get precoEfetivo => produto.preco;
 }
 
 /// Alias para compatibilidade
@@ -198,40 +165,56 @@ typedef ProdutoNoCardapio = CardapioProduto;
 /// Seção completa com produtos
 class CardapioSecaoCompleta {
   final CardapioSecao secao;
+  final List<SecaoImagem> imagensData;
   final List<CardapioProduto> produtos;
 
   CardapioSecaoCompleta({
     required this.secao,
+    this.imagensData = const [],
     this.produtos = const [],
   });
 
   factory CardapioSecaoCompleta.fromJson(Map<String, dynamic> json) {
-    final secao = CardapioSecao.fromJson(json);
+    // Seção vem em json['secao']
+    final secao = CardapioSecao.fromJson(json['secao'] ?? json);
 
+    // Imagens
+    List<SecaoImagem> imagens = [];
+    if (json['imagens'] is List) {
+      imagens = (json['imagens'] as List)
+          .map((e) => SecaoImagem.fromJson(e))
+          .toList();
+    }
+
+    // Produtos vêm como lista de {composicao, produto}
     List<CardapioProduto> produtos = [];
     if (json['produtos'] is List) {
       produtos = (json['produtos'] as List)
-          .map((e) => CardapioProduto.fromJson(e))
-          .toList();
-    } else if (json['items'] is List) {
-      produtos = (json['items'] as List)
           .map((e) => CardapioProduto.fromJson(e))
           .toList();
     }
 
     return CardapioSecaoCompleta(
       secao: secao,
+      imagensData: imagens,
       produtos: produtos,
     );
   }
 
+  // Getters de conveniência
   int get grid => secao.grid;
   String get nome => secao.nome;
-  String? get descricao => secao.descricao;
-  String? get imagemBase64 => secao.imagemBase64;
-  int? get ordem => secao.ordem;
+  int? get ordem => secao.seq;
 
-  /// Produtos ordenados
+  /// Lista de imagens (retorna lista com base64 se existir)
+  List<String> get imagens {
+    return imagensData
+        .where((img) => img.image != null && img.image!.isNotEmpty)
+        .map((img) => img.image!)
+        .toList();
+  }
+
+  /// Produtos ordenados por seq
   List<CardapioProduto> get produtosOrdenados {
     final lista = List<CardapioProduto>.from(produtos);
     lista.sort((a, b) => (a.ordem ?? 0).compareTo(b.ordem ?? 0));
@@ -250,8 +233,10 @@ class CardapioCompleto {
   });
 
   factory CardapioCompleto.fromJson(Map<String, dynamic> json) {
-    final cardapio = Cardapio.fromJson(json);
+    // Cardápio vem em json['cardapio']
+    final cardapio = Cardapio.fromJson(json['cardapio'] ?? json);
 
+    // Seções
     List<CardapioSecaoCompleta> secoes = [];
     if (json['secoes'] is List) {
       secoes = (json['secoes'] as List)
@@ -265,12 +250,11 @@ class CardapioCompleto {
     );
   }
 
+  // Getters de conveniência
   int get grid => cardapio.grid;
   String get nome => cardapio.nome;
-  String? get descricao => cardapio.descricao;
-  bool get ativo => cardapio.ativo;
 
-  /// Seções ordenadas por ordem
+  /// Seções ordenadas por seq
   List<CardapioSecaoCompleta> get secoesOrdenadas {
     final lista = List<CardapioSecaoCompleta>.from(secoes);
     lista.sort((a, b) => (a.ordem ?? 0).compareTo(b.ordem ?? 0));
@@ -279,28 +263,6 @@ class CardapioCompleto {
 
   int get totalProdutos =>
       secoes.fold(0, (sum, secao) => sum + secao.produtos.length);
-
-  List<CardapioProduto> get todosProdutos =>
-      secoes.expand((secao) => secao.produtos).toList();
-
-  CardapioSecaoCompleta? getSecao(int secaoId) {
-    try {
-      return secoes.firstWhere((s) => s.grid == secaoId);
-    } catch (e) {
-      return null;
-    }
-  }
-
-  CardapioProduto? getProduto(int produtoId) {
-    for (final secao in secoes) {
-      try {
-        return secao.produtos.firstWhere((p) => p.produtoId == produtoId);
-      } catch (e) {
-        continue;
-      }
-    }
-    return null;
-  }
 }
 
 // Helpers

@@ -67,8 +67,9 @@ class _MenuScreenState extends State<MenuScreen> {
       context,
       MaterialPageRoute(
         builder: (_) => ProdutoScreen(
-          produtoGrid: produto.produto.grid,
-          precoCardapio: produto.preco,
+          produtoGrid:
+              produto.produtoId, // Use produtoId instead of produto.grid
+          precoCardapio: produto.preco, // Now works with the preco getter
         ),
       ),
     );
@@ -260,7 +261,8 @@ class _MenuScreenState extends State<MenuScreen> {
             itemBuilder: (context, index) {
               final produto = secao.produtos[index];
               return ProdutoCard(
-                produto: produto,
+                produtoCardapio:
+                    produto, // Changed from 'produto:' to 'produtoCardapio:'
                 onTap: () => _onProdutoTap(produto),
               );
             },

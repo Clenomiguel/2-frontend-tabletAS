@@ -1,4 +1,4 @@
-#Tue Jan 27 13:03:47 BRT 2026
+#Tue Jan 27 23:21:42 BRT 2026
 base.0=D\:\\Projeto de Deus\\totem Autosystem\\autoatendimento\\build\\app\\intermediates\\dex\\debug\\mergeExtDexDebug\\classes.dex
 base.1=D\:\\Projeto de Deus\\totem Autosystem\\autoatendimento\\build\\app\\intermediates\\dex\\debug\\mergeProjectDexDebug\\0\\classes.dex
 base.2=D\:\\Projeto de Deus\\totem Autosystem\\autoatendimento\\build\\app\\intermediates\\dex\\debug\\mergeProjectDexDebug\\13\\classes.dex

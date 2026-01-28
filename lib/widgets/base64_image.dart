@@ -1,6 +1,7 @@
 // lib/widgets/base64_image.dart
 // Widget para exibir imagens base64 do backend
 
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';

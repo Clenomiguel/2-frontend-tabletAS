@@ -1,7 +1,7 @@
 // lib/models/produto_models.dart
-// Modelos de produto, complementos, composição e preparos
+// Modelos para produtos
 
-/// Produto principal
+/// Produto base
 class Produto {
   final int grid;
   final String nome;
@@ -34,23 +34,33 @@ class Produto {
   });
 
   factory Produto.fromJson(Map<String, dynamic> json) {
+    // grupo pode ser int ou Map
+    int? grupoGrid;
+    final grupoData = json['grupo'];
+    if (grupoData is int) {
+      grupoGrid = grupoData;
+    } else if (grupoData is Map) {
+      grupoGrid = _toInt(grupoData['grid'] ?? grupoData['id'] ?? 0);
+    }
+
     return Produto(
-      grid: _toInt(json['grid']),
-      nome: json['nome'] ?? '',
-      descricao: json['descricao'],
+      grid: _toInt(json['grid'] ?? json['id'] ?? 0),
+      nome: json['nome'] ?? json['descricao'] ?? '',
+      descricao: json['nome_resumido'] ?? json['descricao'],
       preco: _toDouble(
-          json['preco'] ?? json['preco_venda'] ?? json['preco_unit'] ?? 0),
+          json['preco_unit'] ?? json['preco'] ?? json['preco_venda'] ?? 0),
       precoPromocional: json['preco_promocional'] != null
           ? _toDouble(json['preco_promocional'])
           : null,
-      grupoGrid: json['grupo_grid'] != null ? _toInt(json['grupo_grid']) : null,
-      grupoNome: json['grupo_nome'],
-      ativo:
-          json['ativo'] ?? json['situacao'] == 'A' || json['situacao'] == true,
+      grupoGrid: grupoGrid,
+      grupoNome: null, // API não retorna nome do grupo
+      ativo: json['flag'] == 'A' ||
+          json['ativo'] == true ||
+          json['permite_venda'] == true,
       controlaEstoque: json['controla_estoque'] ?? false,
       estoque: json['estoque'] != null ? _toDouble(json['estoque']) : null,
-      unidade: json['unidade'],
-      codigoBarra: json['codigo_barra'],
+      unidade: json['unid_med'] ?? json['unidade'],
+      codigoBarra: json['codigo_barra']?.toString(),
       imagemBase64: json['imagem'] ?? json['foto'],
     );
   }
@@ -73,19 +83,19 @@ class Produto {
   }
 
   /// Nome para exibição
-  String get nomeExibicao => nome;
+  String get nomeExibicao => nome.isNotEmpty ? nome : 'Produto #$grid';
 
-  /// Preço unitário (alias para preco)
+  /// Alias para preco (compatibilidade)
   double get precoUnit => preco;
 
-  /// Preço efetivo (promocional se houver, senão normal)
+  /// Preço efetivo (promocional ou normal)
   double get precoEfetivo => precoPromocional ?? preco;
 
   /// Verifica se tem promoção
   bool get temPromocao => precoPromocional != null && precoPromocional! < preco;
 }
 
-/// Produto completo com imagens, complementos e composição
+/// Produto completo com relacionamentos
 class ProdutoCompleto {
   final Produto produto;
   final List<ProdutoImagem> imagens;
@@ -140,43 +150,31 @@ class ProdutoCompleto {
     );
   }
 
-  int get grid => produto.grid;
-  String get nome => produto.nome;
-  String get nomeExibicao => produto.nomeExibicao;
-  String? get descricao => produto.descricao;
-  double get preco => produto.preco;
-
-  String? get primeiraImagem =>
-      imagens.isNotEmpty ? imagens.first.imagemBase64 : null;
-
-  /// Composições que podem ser removidas pelo cliente
+  /// Composições que podem ser removidas
   List<ProdutoComposicao> get composicoesOpcionais =>
       composicao.where((c) => c.removivel).toList();
 }
 
 /// Imagem do produto
 class ProdutoImagem {
-  final int? grid;
+  final int grid;
   final int produtoGrid;
-  final String? imagemBase64;
+  final String? imagem;
   final int? ordem;
-  final bool principal;
 
   ProdutoImagem({
-    this.grid,
+    required this.grid,
     required this.produtoGrid,
-    this.imagemBase64,
+    this.imagem,
     this.ordem,
-    this.principal = false,
   });
 
   factory ProdutoImagem.fromJson(Map<String, dynamic> json) {
     return ProdutoImagem(
-      grid: json['grid'] != null ? _toInt(json['grid']) : null,
+      grid: _toInt(json['grid'] ?? json['id'] ?? 0),
       produtoGrid: _toInt(json['produto_grid'] ?? json['produto'] ?? 0),
-      imagemBase64: json['imagem'] ?? json['foto'] ?? json['image'],
+      imagem: json['imagem'] ?? json['foto'],
       ordem: json['ordem'] != null ? _toInt(json['ordem']) : null,
-      principal: json['principal'] ?? false,
     );
   }
 }
@@ -187,61 +185,66 @@ class ProdutoComplemento {
   final int produtoGrid;
   final int complementoGrid;
   final String? nome;
-  final double preco;
-  final double? precoAdicional;
+  final int? quantidade;
   final int? quantidadeMinima;
   final int? quantidadeMaxima;
-  final bool obrigatorio;
-  final int? grupoGrid;
-  final String? grupoNome;
+  final double? preco;
+  final bool ativo;
 
   ProdutoComplemento({
     required this.grid,
     required this.produtoGrid,
     required this.complementoGrid,
     this.nome,
-    required this.preco,
-    this.precoAdicional,
+    this.quantidade,
     this.quantidadeMinima,
     this.quantidadeMaxima,
-    this.obrigatorio = false,
-    this.grupoGrid,
-    this.grupoNome,
+    this.preco,
+    this.ativo = true,
   });
 
   factory ProdutoComplemento.fromJson(Map<String, dynamic> json) {
     return ProdutoComplemento(
       grid: _toInt(json['grid'] ?? json['id'] ?? 0),
       produtoGrid: _toInt(json['produto_grid'] ?? json['produto'] ?? 0),
-      complementoGrid: _toInt(json['complemento_grid'] ??
-          json['complemento'] ??
-          json['produto_complemento'] ??
-          0),
+      complementoGrid:
+          _toInt(json['complemento_grid'] ?? json['complemento'] ?? 0),
       nome: json['nome'] ?? json['complemento_nome'],
-      preco: _toDouble(json['preco'] ?? json['preco_adicional'] ?? 0),
-      precoAdicional: json['preco_adicional'] != null
-          ? _toDouble(json['preco_adicional'])
-          : null,
+      quantidade:
+          json['quantidade'] != null ? _toInt(json['quantidade']) : null,
       quantidadeMinima: json['quantidade_minima'] != null
           ? _toInt(json['quantidade_minima'])
           : null,
       quantidadeMaxima: json['quantidade_maxima'] != null
           ? _toInt(json['quantidade_maxima'])
           : null,
-      obrigatorio: json['obrigatorio'] ?? false,
-      grupoGrid: json['grupo_grid'] != null ? _toInt(json['grupo_grid']) : null,
-      grupoNome: json['grupo_nome'],
+      preco: json['preco'] != null ? _toDouble(json['preco']) : null,
+      ativo: json['ativo'] ?? true,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'grid': grid,
+      'produto_grid': produtoGrid,
+      'complemento_grid': complementoGrid,
+      'nome': nome,
+      'quantidade': quantidade,
+      'quantidade_minima': quantidadeMinima,
+      'quantidade_maxima': quantidadeMaxima,
+      'preco': preco,
+      'ativo': ativo,
+    };
   }
 
   /// Alias para complementoGrid (compatibilidade)
   int get complemento => complementoGrid;
 
-  /// Alias para nome (compatibilidade)
+  /// Nome do complemento
   String? get complementoNome => nome;
 }
 
-/// Item da composição do produto (ingredientes)
+/// Composição do produto (ingredientes)
 class ProdutoComposicao {
   final int grid;
   final int produtoGrid;
@@ -250,101 +253,90 @@ class ProdutoComposicao {
   final double quantidade;
   final String? unidade;
   final bool removivel;
-  final bool padrao;
 
   ProdutoComposicao({
     required this.grid,
     required this.produtoGrid,
     required this.materiaPrima,
     this.nome,
-    required this.quantidade,
+    this.quantidade = 1,
     this.unidade,
     this.removivel = true,
-    this.padrao = true,
   });
 
   factory ProdutoComposicao.fromJson(Map<String, dynamic> json) {
     return ProdutoComposicao(
       grid: _toInt(json['grid'] ?? json['id'] ?? 0),
       produtoGrid: _toInt(json['produto_grid'] ?? json['produto'] ?? 0),
-      materiaPrima: _toInt(json['materia_prima'] ?? json['ingrediente'] ?? 0),
-      nome: json['nome'] ??
-          json['materia_prima_nome'] ??
-          json['ingrediente_nome'],
+      materiaPrima:
+          _toInt(json['materia_prima'] ?? json['materia_prima_grid'] ?? 0),
+      nome: json['nome'] ?? json['materia_prima_nome'],
       quantidade: _toDouble(json['quantidade'] ?? 1),
       unidade: json['unidade'],
-      removivel: json['removivel'] ?? json['pode_remover'] ?? true,
-      padrao: json['padrao'] ?? true,
+      removivel: json['removivel'] ?? json['opcional'] ?? true,
     );
   }
 
-  /// Alias para nome (compatibilidade)
+  Map<String, dynamic> toJson() {
+    return {
+      'grid': grid,
+      'produto_grid': produtoGrid,
+      'materia_prima': materiaPrima,
+      'nome': nome,
+      'quantidade': quantidade,
+      'unidade': unidade,
+      'removivel': removivel,
+    };
+  }
+
+  /// Nome da matéria prima
   String? get materiaPrimaNome => nome;
 }
 
-/// Preparo/Sabor do produto
+/// Preparo do produto
 class Preparo {
   final int grid;
-  final int? produtoGrid;
-  final String nome;
-  final String? descricao;
-  final double? preco;
-  final double? acrescimo;
-  final int? ordem;
-  final bool ativo;
-  final bool ehPadrao;
   final int? codigo;
+  final String? descricao;
+  final bool ehPadrao;
 
   Preparo({
     required this.grid,
-    this.produtoGrid,
-    required this.nome,
-    this.descricao,
-    this.preco,
-    this.acrescimo,
-    this.ordem,
-    this.ativo = true,
-    this.ehPadrao = false,
     this.codigo,
+    this.descricao,
+    this.ehPadrao = false,
   });
 
   factory Preparo.fromJson(Map<String, dynamic> json) {
     return Preparo(
       grid: _toInt(json['grid'] ?? json['id'] ?? 0),
-      produtoGrid:
-          json['produto_grid'] != null ? _toInt(json['produto_grid']) : null,
-      nome: json['nome'] ?? json['descricao'] ?? '',
-      descricao: json['descricao'] ?? json['nome'],
-      preco: json['preco'] != null ? _toDouble(json['preco']) : null,
-      acrescimo:
-          json['acrescimo'] != null ? _toDouble(json['acrescimo']) : null,
-      ordem: json['ordem'] != null ? _toInt(json['ordem']) : null,
-      ativo: json['ativo'] ?? true,
-      ehPadrao: json['eh_padrao'] ?? json['padrao'] ?? json['default'] ?? false,
       codigo: json['codigo'] != null ? _toInt(json['codigo']) : null,
+      descricao: json['descricao'] ?? json['nome'],
+      ehPadrao: json['padrao'] ?? json['eh_padrao'] ?? json['default'] ?? false,
     );
   }
 
-  double get precoEfetivo => preco ?? acrescimo ?? 0;
+  Map<String, dynamic> toJson() {
+    return {
+      'grid': grid,
+      'codigo': codigo,
+      'descricao': descricao,
+      'padrao': ehPadrao,
+    };
+  }
 }
 
-/// Alias para Preparo (compatibilidade)
+/// Alias para compatibilidade
 typedef ProdutoPreparo = Preparo;
 
-/// Resposta de preparos de um produto
+/// Preparos do produto (resposta da API)
 class PreparosDoProduto {
   final int produtoGrid;
   final List<Preparo> preparos;
-  final bool obrigatorio;
-  final int? minimoSelecao;
-  final int? maximoSelecao;
 
   PreparosDoProduto({
     required this.produtoGrid,
-    required this.preparos,
-    this.obrigatorio = false,
-    this.minimoSelecao,
-    this.maximoSelecao,
+    this.preparos = const [],
   });
 
   factory PreparosDoProduto.fromJson(Map<String, dynamic> json) {
@@ -360,13 +352,6 @@ class PreparosDoProduto {
     return PreparosDoProduto(
       produtoGrid: _toInt(json['produto_grid'] ?? json['produto'] ?? 0),
       preparos: preparos,
-      obrigatorio: json['obrigatorio'] ?? false,
-      minimoSelecao: json['minimo_selecao'] != null
-          ? _toInt(json['minimo_selecao'])
-          : null,
-      maximoSelecao: json['maximo_selecao'] != null
-          ? _toInt(json['maximo_selecao'])
-          : null,
     );
   }
 }
@@ -377,7 +362,6 @@ class GrupoComplemento {
   final String nome;
   final int? quantidadeMinima;
   final int? quantidadeMaxima;
-  final bool obrigatorio;
   final List<ProdutoComplemento> complementos;
 
   GrupoComplemento({
@@ -385,7 +369,6 @@ class GrupoComplemento {
     required this.nome,
     this.quantidadeMinima,
     this.quantidadeMaxima,
-    this.obrigatorio = false,
     this.complementos = const [],
   });
 
@@ -406,13 +389,12 @@ class GrupoComplemento {
       quantidadeMaxima: json['quantidade_maxima'] != null
           ? _toInt(json['quantidade_maxima'])
           : null,
-      obrigatorio: json['obrigatorio'] ?? false,
       complementos: complementos,
     );
   }
 }
 
-/// Resposta paginada genérica
+/// Resposta paginada
 class PaginatedResponse<T> {
   final List<T> items;
   final int total;
@@ -423,37 +405,25 @@ class PaginatedResponse<T> {
   PaginatedResponse({
     required this.items,
     required this.total,
-    required this.page,
-    required this.perPage,
-    required this.totalPages,
-  });
+    this.page = 1,
+    this.perPage = 100,
+    int? totalPages,
+  }) : totalPages = totalPages ?? ((total + perPage - 1) ~/ perPage);
 
   factory PaginatedResponse.fromJson(
     Map<String, dynamic> json,
     T Function(Map<String, dynamic>) fromJson,
   ) {
-    final items = (json['items'] as List? ?? [])
-        .map((e) => fromJson(e as Map<String, dynamic>))
-        .toList();
-
-    final total = _toInt(json['total'] ?? items.length);
-    final page = _toInt(json['page'] ?? 1);
-    final perPage = _toInt(json['per_page'] ?? json['limit'] ?? items.length);
-    final totalPages = perPage > 0 ? (total / perPage).ceil() : 1;
-
-    return PaginatedResponse(
-      items: items,
-      total: total,
-      page: page,
-      perPage: perPage,
-      totalPages: totalPages,
+    final itemsList = json['items'] as List? ?? [];
+    return PaginatedResponse<T>(
+      items: itemsList.map((e) => fromJson(e as Map<String, dynamic>)).toList(),
+      total: _toInt(json['total'] ?? itemsList.length),
+      page: _toInt(json['page'] ?? 1),
+      perPage: _toInt(json['per_page'] ?? json['limit'] ?? 100),
     );
   }
 
-  bool get hasNext => page < totalPages;
-  bool get hasPrevious => page > 1;
-  bool get isEmpty => items.isEmpty;
-  bool get isNotEmpty => items.isNotEmpty;
+  bool get hasMore => page < totalPages;
 }
 
 // Helpers

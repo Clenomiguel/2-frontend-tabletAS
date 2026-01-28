@@ -7,7 +7,7 @@ import '../models/cardapio_models.dart';
 import '../services/api_service.dart';
 
 class SecaoHeader extends StatelessWidget {
-  final SecaoCompleta secao;
+  final CardapioSecaoCompleta secao;
 
   const SecaoHeader({
     super.key,

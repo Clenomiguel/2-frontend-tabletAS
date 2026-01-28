@@ -77,19 +77,22 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
     }
   }
 
-  double get _precoBase => widget.precoCardapio ?? _produtoCompleto?.produto.precoUnit ?? 0;
+  double get _precoBase =>
+      widget.precoCardapio ?? _produtoCompleto?.produto.precoUnit ?? 0;
 
   double get _precoTotal {
     double total = _precoBase * _quantidade;
-    
+
     // Adiciona complementos
     for (final entry in _complementosSelecionados.entries) {
-      final complemento = _produtoCompleto?.complementos.firstWhere(
-        (c) => c.complemento == entry.key,
-        orElse: () => ProdutoComplemento(grid: 0, produto: 0, complemento: 0),
+      final comp = _produtoCompleto?.complementos.firstWhere(
+        (c) => c.complementoGrid == entry.key,
+        orElse: () =>
+            ProdutoComplemento(grid: 0, produtoGrid: 0, complementoGrid: 0),
       );
-      // TODO: Buscar preço do complemento se disponível
-      // Por enquanto, complementos são gratuitos ou preço fixo
+      if (comp != null && comp.preco != null) {
+        total += comp.preco! * entry.value;
+      }
     }
 
     return total;
@@ -103,12 +106,14 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
     // Monta lista de complementos selecionados
     final complementos = _complementosSelecionados.entries.map((entry) {
       final comp = _produtoCompleto!.complementos.firstWhere(
-        (c) => c.complemento == entry.key,
+        (c) => c.complementoGrid == entry.key,
       );
       return ComplementoSelecionado(
-        produtoGrid: entry.key,
+        produtoGrid: _produtoCompleto!.produto.grid,
+        complementoGrid: entry.key,
         nome: comp.complementoNome ?? 'Complemento',
         quantidade: entry.value,
+        preco: comp.preco ?? 0.0,
       );
     }).toList();
 
@@ -132,7 +137,8 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
     // Mostra feedback e volta
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('${_produtoCompleto!.produto.nomeExibicao} adicionado ao carrinho!'),
+        content: Text(
+            '${_produtoCompleto!.produto.nomeExibicao} adicionado ao carrinho!'),
         backgroundColor: const Color(0xFF6B21A8),
         duration: const Duration(seconds: 2),
       ),
@@ -164,7 +170,7 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
           children: [
             const Icon(Icons.error_outline, size: 64, color: Colors.red),
             const SizedBox(height: 16),
-            Text('Erro ao carregar produto'),
+            const Text('Erro ao carregar produto'),
             const SizedBox(height: 8),
             Text(_error!),
             const SizedBox(height: 24),
@@ -194,7 +200,8 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
           flexibleSpace: FlexibleSpaceBar(
             background: produto.imagens.isNotEmpty
                 ? Image.network(
-                    Api.instance.getProdutoImageUrl(produto.produto.grid, size: 'large'),
+                    Api.instance.getProdutoImageUrl(produto.produto.grid,
+                        size: 'large'),
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => _buildPlaceholderImage(),
                   )
@@ -261,7 +268,8 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFF6B21A8), width: 2),
+                      borderSide:
+                          const BorderSide(color: Color(0xFF6B21A8), width: 2),
                     ),
                   ),
                 ),
@@ -351,7 +359,7 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
   Widget _buildComplementos() {
     return Column(
       children: _produtoCompleto!.complementos.map((comp) {
-        final quantidade = _complementosSelecionados[comp.complemento] ?? 0;
+        final quantidade = _complementosSelecionados[comp.complementoGrid] ?? 0;
         return Container(
           margin: const EdgeInsets.only(bottom: 8),
           padding: const EdgeInsets.all(12),
@@ -362,9 +370,22 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
           child: Row(
             children: [
               Expanded(
-                child: Text(
-                  comp.complementoNome ?? 'Complemento',
-                  style: const TextStyle(fontSize: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      comp.complementoNome ?? 'Complemento',
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                    if (comp.preco != null && comp.preco! > 0)
+                      Text(
+                        '+ ${ParsingUtils.formatCurrency(comp.preco!)}',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                  ],
                 ),
               ),
               // Controles de quantidade
@@ -372,9 +393,11 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
                 onPressed: quantidade > 0
                     ? () => setState(() {
                           if (quantidade == 1) {
-                            _complementosSelecionados.remove(comp.complemento);
+                            _complementosSelecionados
+                                .remove(comp.complementoGrid);
                           } else {
-                            _complementosSelecionados[comp.complemento] = quantidade - 1;
+                            _complementosSelecionados[comp.complementoGrid] =
+                                quantidade - 1;
                           }
                         })
                     : null,
@@ -390,7 +413,8 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
               ),
               IconButton(
                 onPressed: () => setState(() {
-                  _complementosSelecionados[comp.complemento] = quantidade + 1;
+                  _complementosSelecionados[comp.complementoGrid] =
+                      quantidade + 1;
                 }),
                 icon: const Icon(Icons.add_circle),
                 color: const Color(0xFF6B21A8),
@@ -453,7 +477,8 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
             // Botão adicionar
             Expanded(
               child: ElevatedButton(
-                onPressed: _produtoCompleto != null ? _adicionarAoCarrinho : null,
+                onPressed:
+                    _produtoCompleto != null ? _adicionarAoCarrinho : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF6B21A8),
                   foregroundColor: Colors.white,
