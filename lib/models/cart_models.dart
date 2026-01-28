@@ -1,221 +1,265 @@
 // lib/models/cart_models.dart
-// Modelos para carrinho e registro de comanda no Linx
+// Modelos para carrinho de compras e pedidos
 
-import '../utils/parsing_utils.dart';
 import 'produto_models.dart';
 
-/// Item do carrinho com personalizações
+/// Item do carrinho
 class CartItem {
-  final String id; // UUID local para identificação
   final Produto produto;
+  int quantidade;
   final double precoUnitario;
-  final int quantidade;
-  final ProdutoPreparo? preparo;
-  final List<ProdutoComposicao> composicoesRemovidas;
-  final List<ComplementoSelecionado> complementos;
-  final String? observacao;
+  String? observacao;
+  Preparo? preparo;
+  List<ComplementoSelecionado> complementos;
+  List<ComposicaoRemovida> composicoesRemovidas;
+  final String id;
 
   CartItem({
-    required this.id,
     required this.produto,
-    required this.precoUnitario,
     this.quantidade = 1,
-    this.preparo,
-    this.composicoesRemovidas = const [],
-    this.complementos = const [],
+    double? precoUnitario,
     this.observacao,
-  });
+    this.preparo,
+    List<ComplementoSelecionado>? complementos,
+    List<ComposicaoRemovida>? composicoesRemovidas,
+    String? id,
+  })  : precoUnitario = precoUnitario ?? produto.preco,
+        complementos = complementos ?? [],
+        composicoesRemovidas = composicoesRemovidas ?? [],
+        id = id ?? '${produto.grid}_${DateTime.now().millisecondsSinceEpoch}';
 
-  /// Preço total do item (unitário * quantidade + complementos)
+  /// Preço total do item (produto + complementos) * quantidade
   double get precoTotal {
-    double total = precoUnitario * quantidade;
-    for (final comp in complementos) {
-      total += (comp.precoUnitario ?? 0) * comp.quantidade;
-    }
-    return total;
+    double precoComplementos = complementos.fold(
+      0.0,
+      (sum, c) => sum + (c.preco * c.quantidade),
+    );
+    return (precoUnitario + precoComplementos) * quantidade;
   }
 
-  /// Descrição resumida das personalizações
+  /// Descrição resumida dos complementos
+  String get complementosDescricao {
+    if (complementos.isEmpty) return '';
+    return complementos.map((c) => c.nome).join(', ');
+  }
+
+  /// Descrição resumida das remoções
+  String get removidosDescricao {
+    if (composicoesRemovidas.isEmpty) return '';
+    return 'Sem: ${composicoesRemovidas.map((c) => c.nome).join(', ')}';
+  }
+
+  /// Descrição completa da personalização do item
   String get descricaoPersonalizacao {
     final partes = <String>[];
-    
-    if (preparo != null && preparo!.descricao != null) {
-      partes.add(preparo!.descricao!);
+
+    if (preparo != null) {
+      partes.add(preparo!.nome);
     }
-    
-    if (composicoesRemovidas.isNotEmpty) {
-      final removidos = composicoesRemovidas
-          .map((c) => 'Sem ${c.materiaPrimaNome ?? c.materiaPrima}')
-          .join(', ');
-      partes.add(removidos);
-    }
-    
+
     if (complementos.isNotEmpty) {
-      final comps = complementos
-          .map((c) => '${c.quantidade}x ${c.nome}')
-          .join(', ');
-      partes.add(comps);
+      partes.add('+ ${complementos.map((c) => c.nome).join(', ')}');
     }
-    
+
+    if (composicoesRemovidas.isNotEmpty) {
+      partes.add('Sem: ${composicoesRemovidas.map((c) => c.nome).join(', ')}');
+    }
+
     if (observacao != null && observacao!.isNotEmpty) {
       partes.add('Obs: $observacao');
     }
-    
+
     return partes.join(' | ');
   }
 
-  /// Cria cópia com alterações
+  /// Cria cópia do item
   CartItem copyWith({
+    Produto? produto,
     int? quantidade,
-    ProdutoPreparo? preparo,
-    List<ProdutoComposicao>? composicoesRemovidas,
-    List<ComplementoSelecionado>? complementos,
+    double? precoUnitario,
     String? observacao,
+    Preparo? preparo,
+    List<ComplementoSelecionado>? complementos,
+    List<ComposicaoRemovida>? composicoesRemovidas,
   }) {
     return CartItem(
-      id: id,
-      produto: produto,
-      precoUnitario: precoUnitario,
+      produto: produto ?? this.produto,
       quantidade: quantidade ?? this.quantidade,
-      preparo: preparo ?? this.preparo,
-      composicoesRemovidas: composicoesRemovidas ?? this.composicoesRemovidas,
-      complementos: complementos ?? this.complementos,
+      precoUnitario: precoUnitario ?? this.precoUnitario,
       observacao: observacao ?? this.observacao,
+      preparo: preparo ?? this.preparo,
+      complementos: complementos ?? List.from(this.complementos),
+      composicoesRemovidas:
+          composicoesRemovidas ?? List.from(this.composicoesRemovidas),
+      id: id,
     );
-  }
-
-  /// Converte para formato do backend (item da comanda)
-  Map<String, dynamic> toComandaItem() {
-    return {
-      'produto_grid': produto.grid,
-      'quantidade': quantidade,
-      'preco_unitario': precoUnitario,
-      'preparo_grid': preparo?.grid,
-      'composicoes_removidas': composicoesRemovidas.map((c) => c.grid).toList(),
-      'complementos': complementos.map((c) => c.toJson()).toList(),
-      'observacao': observacao,
-    };
   }
 }
 
-/// Complemento selecionado pelo cliente
+/// Complemento selecionado no carrinho
 class ComplementoSelecionado {
   final int produtoGrid;
   final String nome;
-  final int quantidade;
-  final double? precoUnitario;
+  final double preco;
+  int quantidade;
 
   ComplementoSelecionado({
     required this.produtoGrid,
     required this.nome,
+    required this.preco,
     this.quantidade = 1,
-    this.precoUnitario,
   });
 
-  Map<String, dynamic> toJson() => {
-    'produto_grid': produtoGrid,
-    'quantidade': quantidade,
-  };
+  factory ComplementoSelecionado.fromComplemento(ProdutoComplemento comp) {
+    return ComplementoSelecionado(
+      produtoGrid: comp.complementoGrid,
+      nome: comp.nome ?? 'Complemento',
+      preco: comp.preco,
+      quantidade: 1,
+    );
+  }
 }
 
-/// Carrinho de compras local
+/// Item da composição que foi removido
+class ComposicaoRemovida {
+  final int materiaPrima;
+  final String nome;
+
+  ComposicaoRemovida({
+    required this.materiaPrima,
+    required this.nome,
+  });
+
+  factory ComposicaoRemovida.fromComposicao(ProdutoComposicao comp) {
+    return ComposicaoRemovida(
+      materiaPrima: comp.materiaPrima,
+      nome: comp.nome ?? 'Ingrediente',
+    );
+  }
+}
+
+/// Carrinho de compras
 class Cart {
   final List<CartItem> items;
-  final int? mesa;
-  final String? clienteNome;
-  final String? clienteCpf;
+  int? mesa;
+  String? clienteNome;
+  String? clienteCpf;
+  String? observacaoGeral;
 
   Cart({
-    this.items = const [],
+    List<CartItem>? items,
     this.mesa,
     this.clienteNome,
     this.clienteCpf,
-  });
+    this.observacaoGeral,
+  }) : items = items ?? [];
 
-  /// Total do carrinho
-  double get total => items.fold(0, (sum, item) => sum + item.precoTotal);
+  int get totalItens => items.fold(0, (sum, item) => sum + item.quantidade);
 
-  /// Quantidade total de itens
-  int get quantidadeTotal => items.fold(0, (sum, item) => sum + item.quantidade);
+  double get valorTotal =>
+      items.fold(0.0, (sum, item) => sum + item.precoTotal);
 
-  /// Verifica se está vazio
   bool get isEmpty => items.isEmpty;
 
-  /// Verifica se tem itens
   bool get isNotEmpty => items.isNotEmpty;
 
-  /// Adiciona item
-  Cart addItem(CartItem item) {
-    return Cart(
-      items: [...items, item],
-      mesa: mesa,
-      clienteNome: clienteNome,
-      clienteCpf: clienteCpf,
-    );
+  void addItem(CartItem item) {
+    final existingIndex = items.indexWhere((i) =>
+        i.produto.grid == item.produto.grid &&
+        i.preparo?.grid == item.preparo?.grid &&
+        _complementosIguais(i.complementos, item.complementos) &&
+        _removidosIguais(i.composicoesRemovidas, item.composicoesRemovidas));
+
+    if (existingIndex >= 0) {
+      items[existingIndex].quantidade += item.quantidade;
+    } else {
+      items.add(item);
+    }
   }
 
-  /// Remove item por ID
-  Cart removeItem(String itemId) {
-    return Cart(
-      items: items.where((i) => i.id != itemId).toList(),
-      mesa: mesa,
-      clienteNome: clienteNome,
-      clienteCpf: clienteCpf,
-    );
+  void removeItem(String itemId) {
+    items.removeWhere((item) => item.id == itemId);
   }
 
-  /// Atualiza item
-  Cart updateItem(String itemId, CartItem newItem) {
-    return Cart(
-      items: items.map((i) => i.id == itemId ? newItem : i).toList(),
-      mesa: mesa,
-      clienteNome: clienteNome,
-      clienteCpf: clienteCpf,
-    );
+  void removeItemAt(int index) {
+    if (index >= 0 && index < items.length) {
+      items.removeAt(index);
+    }
   }
 
-  /// Limpa carrinho
-  Cart clear() {
-    return Cart(
-      mesa: mesa,
-      clienteNome: clienteNome,
-      clienteCpf: clienteCpf,
-    );
+  void updateQuantidade(String itemId, int novaQuantidade) {
+    final index = items.indexWhere((item) => item.id == itemId);
+    if (index >= 0) {
+      if (novaQuantidade <= 0) {
+        items.removeAt(index);
+      } else {
+        items[index].quantidade = novaQuantidade;
+      }
+    }
   }
 
-  /// Define mesa
-  Cart setMesa(int? mesa) {
-    return Cart(
-      items: items,
-      mesa: mesa,
-      clienteNome: clienteNome,
-      clienteCpf: clienteCpf,
-    );
+  void incrementItem(String itemId) {
+    final index = items.indexWhere((item) => item.id == itemId);
+    if (index >= 0) {
+      items[index].quantidade++;
+    }
   }
 
-  /// Define dados do cliente
-  Cart setCliente({String? nome, String? cpf}) {
-    return Cart(
-      items: items,
-      mesa: mesa,
-      clienteNome: nome ?? clienteNome,
-      clienteCpf: cpf ?? clienteCpf,
-    );
+  void decrementItem(String itemId) {
+    final index = items.indexWhere((item) => item.id == itemId);
+    if (index >= 0) {
+      if (items[index].quantidade > 1) {
+        items[index].quantidade--;
+      } else {
+        items.removeAt(index);
+      }
+    }
   }
 
-  /// Converte para payload de registro de comanda
-  Map<String, dynamic> toComandaPayload({
-    required int totemId,
-    required int empresaId,
+  void clear() {
+    items.clear();
+    mesa = null;
+    clienteNome = null;
+    clienteCpf = null;
+    observacaoGeral = null;
+  }
+
+  bool _complementosIguais(
+    List<ComplementoSelecionado> a,
+    List<ComplementoSelecionado> b,
+  ) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].produtoGrid != b[i].produtoGrid) return false;
+    }
+    return true;
+  }
+
+  bool _removidosIguais(
+    List<ComposicaoRemovida> a,
+    List<ComposicaoRemovida> b,
+  ) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].materiaPrima != b[i].materiaPrima) return false;
+    }
+    return true;
+  }
+
+  Cart copyWith({
+    List<CartItem>? items,
+    int? mesa,
+    String? clienteNome,
+    String? clienteCpf,
+    String? observacaoGeral,
   }) {
-    return {
-      'totem_id': totemId,
-      'empresa_id': empresaId,
-      'mesa': mesa,
-      'cliente_nome': clienteNome,
-      'cliente_cpf': clienteCpf,
-      'itens': items.map((i) => i.toComandaItem()).toList(),
-    };
+    return Cart(
+      items: items ?? this.items.map((i) => i.copyWith()).toList(),
+      mesa: mesa ?? this.mesa,
+      clienteNome: clienteNome ?? this.clienteNome,
+      clienteCpf: clienteCpf ?? this.clienteCpf,
+      observacaoGeral: observacaoGeral ?? this.observacaoGeral,
+    );
   }
 }
 
@@ -225,52 +269,66 @@ class ComandaResponse {
   final String? comandaId;
   final String? message;
   final String? error;
-  final Map<String, dynamic>? linxResponse;
 
   ComandaResponse({
     required this.success,
     this.comandaId,
     this.message,
     this.error,
-    this.linxResponse,
   });
 
   factory ComandaResponse.fromJson(Map<String, dynamic> json) {
     return ComandaResponse(
-      success: ParsingUtils.parseBool(json['success']) ?? false,
-      comandaId: json['comanda_id']?.toString(),
+      success: json['success'] ?? true,
+      comandaId: json['comanda_id']?.toString() ?? json['id']?.toString(),
       message: json['message'],
-      error: json['error'],
-      linxResponse: json['linx_response'],
+      error: json['error'] ?? json['detail'],
     );
   }
 }
 
-/// Status da comanda
-enum ComandaStatus {
-  pendente,
-  enviando,
-  confirmada,
-  erro,
+/// Estado do pedido
+enum OrderStatus {
+  pending,
+  confirmed,
+  preparing,
+  ready,
+  delivered,
+  cancelled,
 }
 
-/// Comanda registrada (histórico local)
-class ComandaRegistrada {
-  final String id;
-  final DateTime dataHora;
-  final double total;
-  final int quantidadeItens;
-  final int? mesa;
-  final ComandaStatus status;
-  final String? linxId;
+extension OrderStatusExtension on OrderStatus {
+  String get displayName {
+    switch (this) {
+      case OrderStatus.pending:
+        return 'Pendente';
+      case OrderStatus.confirmed:
+        return 'Confirmado';
+      case OrderStatus.preparing:
+        return 'Em Preparo';
+      case OrderStatus.ready:
+        return 'Pronto';
+      case OrderStatus.delivered:
+        return 'Entregue';
+      case OrderStatus.cancelled:
+        return 'Cancelado';
+    }
+  }
 
-  ComandaRegistrada({
-    required this.id,
-    required this.dataHora,
-    required this.total,
-    required this.quantidadeItens,
-    this.mesa,
-    this.status = ComandaStatus.pendente,
-    this.linxId,
-  });
+  String get icon {
+    switch (this) {
+      case OrderStatus.pending:
+        return '⏳';
+      case OrderStatus.confirmed:
+        return '✅';
+      case OrderStatus.preparing:
+        return '👨‍🍳';
+      case OrderStatus.ready:
+        return '🔔';
+      case OrderStatus.delivered:
+        return '✓';
+      case OrderStatus.cancelled:
+        return '❌';
+    }
+  }
 }

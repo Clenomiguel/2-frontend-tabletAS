@@ -3,6 +3,7 @@
 
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 
 import '../models/produto_models.dart';
@@ -25,13 +26,15 @@ class ApiException implements Exception {
 class ApiConfig {
   final String baseUrl;
   final int empresaId;
-  final int? cardapioId; // Cardápio padrão (opcional)
+  final int? cardapioId;
+  final int terminalId; // ID do terminal para comandas
   final Duration timeout;
 
   const ApiConfig({
     required this.baseUrl,
     required this.empresaId,
     this.cardapioId,
+    this.terminalId = 1,
     this.timeout = const Duration(seconds: 30),
   });
 
@@ -40,7 +43,8 @@ class ApiConfig {
     return const ApiConfig(
       baseUrl: 'http://192.168.3.150:8000',
       empresaId: 26322354,
-      cardapioId: null, // Será carregado dinamicamente
+      terminalId: 1,
+      cardapioId: null,
     );
   }
 }
@@ -49,6 +53,9 @@ class ApiConfig {
 class ApiService {
   final ApiConfig config;
   final http.Client _client;
+
+  // Cache de imagens base64 decodificadas
+  final Map<String, Uint8List> _imageCache = {};
 
   ApiService({
     required this.config,
@@ -99,10 +106,11 @@ class ApiService {
   /// POST request genérico
   Future<dynamic> _post(
     String path,
-    Map<String, dynamic> body,
-  ) async {
+    Map<String, dynamic> body, [
+    Map<String, dynamic>? queryParams,
+  ]) async {
     try {
-      final url = _buildUrl(path);
+      final url = _buildUrl(path, queryParams);
       print('🌐 POST: $url');
       print('📦 Body: $body');
 
@@ -181,15 +189,13 @@ class ApiService {
     return CardapioCompleto.fromJson(data);
   }
 
-  /// Busca primeiro cardápio disponível (substitui getCardapioAtivo)
+  /// Busca primeiro cardápio disponível
   Future<CardapioCompleto?> getCardapioAtivo() async {
     try {
-      // Se temos um cardápio configurado, usa ele
       if (config.cardapioId != null) {
         return await getCardapioCompleto(config.cardapioId!);
       }
 
-      // Senão, busca a lista e pega o primeiro
       final cardapios = await getCardapios(limit: 1);
       if (cardapios.isEmpty) {
         return null;
@@ -275,18 +281,141 @@ class ApiService {
   }
 
   // ============================================================
-  // IMAGENS
+  // IMAGENS BASE64
   // ============================================================
 
-  /// Monta URL da imagem do produto
-  String getProdutoImageUrl(int produtoId, {String size = 'medium'}) {
-    // Usando o endpoint de imagens estáticas do backend
-    return '${config.baseUrl}/api/v1/static/img/produtos/produto_$produtoId.jpeg';
+  /// Busca imagem do produto como base64
+  Future<Uint8List?> getProdutoImagem(int produtoId) async {
+    final cacheKey = 'produto_$produtoId';
+
+    // Verifica cache primeiro
+    if (_imageCache.containsKey(cacheKey)) {
+      return _imageCache[cacheKey];
+    }
+
+    try {
+      final data = await _get('/api/v1/produtos/$produtoId/imagens');
+
+      // O backend pode retornar a imagem de várias formas:
+      // 1. { "imagem": "base64string" }
+      // 2. { "imagens": [{ "imagem": "base64string" }] }
+      // 3. Lista direta de imagens
+
+      String? base64String;
+
+      if (data is Map) {
+        // Caso 1: campo "imagem" direto
+        if (data['imagem'] != null) {
+          base64String = data['imagem'] as String?;
+        }
+        // Caso 2: array "imagens"
+        else if (data['imagens'] is List &&
+            (data['imagens'] as List).isNotEmpty) {
+          final primeiraImagem = (data['imagens'] as List).first;
+          base64String = primeiraImagem['imagem'] as String?;
+        }
+        // Caso 3: campo "foto" ou "image"
+        else if (data['foto'] != null) {
+          base64String = data['foto'] as String?;
+        } else if (data['image'] != null) {
+          base64String = data['image'] as String?;
+        }
+      } else if (data is List && data.isNotEmpty) {
+        // Lista direta de imagens
+        final primeiraImagem = data.first;
+        if (primeiraImagem is Map) {
+          base64String = primeiraImagem['imagem'] as String? ??
+              primeiraImagem['foto'] as String? ??
+              primeiraImagem['image'] as String?;
+        } else if (primeiraImagem is String) {
+          base64String = primeiraImagem;
+        }
+      }
+
+      if (base64String != null && base64String.isNotEmpty) {
+        final bytes = base64ToBytes(base64String);
+        _imageCache[cacheKey] = bytes;
+        return bytes;
+      }
+
+      return null;
+    } catch (e) {
+      print('⚠️ Erro ao buscar imagem do produto $produtoId: $e');
+      return null;
+    }
   }
 
-  /// Monta URL da imagem da seção
-  String getSecaoImageUrl(int secaoId, {String size = 'medium'}) {
-    return '${config.baseUrl}/api/v1/static/img/cardapio/secao_$secaoId.jpeg';
+  /// Busca imagem da seção como base64
+  Future<Uint8List?> getSecaoImagem(int secaoId) async {
+    final cacheKey = 'secao_$secaoId';
+
+    if (_imageCache.containsKey(cacheKey)) {
+      return _imageCache[cacheKey];
+    }
+
+    try {
+      final data = await _get('/api/v1/cardapios/secoes/$secaoId/imagens');
+
+      String? base64String;
+
+      if (data is Map) {
+        base64String = data['imagem'] as String? ??
+            data['foto'] as String? ??
+            data['image'] as String?;
+      } else if (data is List && data.isNotEmpty) {
+        final primeira = data.first;
+        if (primeira is Map) {
+          base64String = primeira['imagem'] as String? ??
+              primeira['foto'] as String? ??
+              primeira['image'] as String?;
+        } else if (primeira is String) {
+          base64String = primeira;
+        }
+      }
+
+      if (base64String != null && base64String.isNotEmpty) {
+        final bytes = base64ToBytes(base64String);
+        _imageCache[cacheKey] = bytes;
+        return bytes;
+      }
+
+      return null;
+    } catch (e) {
+      print('⚠️ Erro ao buscar imagem da seção $secaoId: $e');
+      return null;
+    }
+  }
+
+  /// Converte string base64 para bytes (Uint8List)
+  /// Trata prefixos data:image/... se presentes
+  Uint8List base64ToBytes(String base64String) {
+    String cleanBase64 = base64String;
+
+    // Remove prefixo data:image/xxx;base64, se existir
+    if (cleanBase64.contains(',')) {
+      cleanBase64 = cleanBase64.split(',').last;
+    }
+
+    // Remove espaços e quebras de linha
+    cleanBase64 = cleanBase64.replaceAll(RegExp(r'\s'), '');
+
+    // Adiciona padding se necessário
+    final padding = cleanBase64.length % 4;
+    if (padding > 0) {
+      cleanBase64 += '=' * (4 - padding);
+    }
+
+    return base64Decode(cleanBase64);
+  }
+
+  /// Limpa cache de imagens
+  void clearImageCache() {
+    _imageCache.clear();
+  }
+
+  /// Remove imagem específica do cache
+  void removeFromImageCache(String key) {
+    _imageCache.remove(key);
   }
 
   // ============================================================
@@ -295,69 +424,90 @@ class ApiService {
 
   /// Registra comanda/pedido
   Future<ComandaResponse> registrarComanda(Cart cart) async {
-    // Gera número único para a comanda baseado na mesa ou timestamp
+    // Gera número único para a comanda
     final comandaNumeroGerado = cart.mesa?.toString() ??
         'T${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}';
 
-    // Primeiro cria a comanda (sem campos cliente/observacao que não existem na tabela)
-    final comandaData = {
-      'comanda': comandaNumeroGerado,
-      'empresa': config.empresaId,
-      'quantidade_pessoas': 1,
-    };
-
-    final comanda = await _post('/api/v1/comandas', comandaData);
-    final comandaNumero = comanda['comanda'] ?? comanda['id']?.toString();
-
-    if (comandaNumero == null) {
-      return ComandaResponse(
-        success: false,
-        error: 'Falha ao criar comanda',
-      );
-    }
-
-    // Libera a comanda para uso
-    await _post('/api/v1/comandas/$comandaNumero/liberar', {});
-
-    // Adiciona cada item
-    for (final item in cart.items) {
-      final produtoData = {
-        'produto': item.produto.grid,
-        'quantidade': item.quantidade,
-        'preco': item.precoUnitario,
-        'obs': item.observacao,
-        'preparacao': item.preparo?.grid,
+    try {
+      // 1. Cria a comanda
+      final comandaData = {
+        'comanda': comandaNumeroGerado,
+        'empresa': config.empresaId,
+        'quantidade_pessoas': 1,
+        if (cart.clienteNome != null) 'cliente_nome': cart.clienteNome,
       };
 
-      final produtoResponse = await _post(
-        '/api/v1/comandas/$comandaNumero/produtos',
-        produtoData,
+      final comanda = await _post('/api/v1/comandas', comandaData);
+      final comandaNumero = comanda['comanda'] ?? comanda['id']?.toString();
+      final comandaId = comanda['id'];
+
+      if (comandaNumero == null) {
+        return ComandaResponse(
+          success: false,
+          error: 'Falha ao criar comanda',
+        );
+      }
+
+      // 2. Libera a comanda para uso
+      await _post('/api/v1/comandas/$comandaNumero/liberar', {});
+
+      // 3. Adiciona cada item usando query params para terminal/empresa
+      for (final item in cart.items) {
+        final produtoData = {
+          'produto': item.produto.grid,
+          'quantidade': item.quantidade,
+          'preco_unit': item.precoUnitario, // Campo correto: preco_unit
+          'observacao': item.observacao ?? '',
+        };
+
+        // Terminal e empresa vão como query params
+        final queryParams = {
+          'terminal_id': config.terminalId,
+          'empresa_id': config.empresaId,
+          if (cart.clienteNome != null) 'cliente_nome': cart.clienteNome,
+        };
+
+        final produtoResponse = await _post(
+          '/api/v1/comandas/$comandaNumero/produtos',
+          produtoData,
+          queryParams,
+        );
+
+        final codigoProduto = produtoResponse['codigo'];
+
+        if (codigoProduto != null) {
+          // 4. Adiciona complementos se houver
+          for (final comp in item.complementos) {
+            await _post(
+                '/api/v1/comandas/produtos/$codigoProduto/complementos', {
+              'complemento': comp.produtoGrid,
+              'quantidade': comp.quantidade,
+              'preco': comp.preco,
+            });
+          }
+
+          // 5. Adiciona modificações na composição (remoções)
+          for (final removida in item.composicoesRemovidas) {
+            await _post('/api/v1/comandas/produtos/$codigoProduto/composicao', {
+              'materia_prima': removida.materiaPrima,
+              'acao': 'R', // R = Remover
+            });
+          }
+        }
+      }
+
+      return ComandaResponse(
+        success: true,
+        comandaId: comandaNumero,
+        message: 'Pedido registrado com sucesso!',
       );
-
-      final codigoProduto = produtoResponse['codigo'];
-
-      // Adiciona complementos se houver
-      for (final comp in item.complementos) {
-        await _post('/api/v1/comandas/produtos/$codigoProduto/complementos', {
-          'complemento': comp.produtoGrid,
-          'quantidade': comp.quantidade,
-        });
-      }
-
-      // Adiciona modificações na composição (remoções)
-      for (final removida in item.composicoesRemovidas) {
-        await _post('/api/v1/comandas/produtos/$codigoProduto/composicao', {
-          'materia_prima': removida.materiaPrima,
-          'acao': 'R', // R = Remover
-        });
-      }
+    } catch (e) {
+      print('❌ Erro ao registrar comanda: $e');
+      return ComandaResponse(
+        success: false,
+        error: e.toString(),
+      );
     }
-
-    return ComandaResponse(
-      success: true,
-      comandaId: comandaNumero,
-      message: 'Pedido registrado com sucesso!',
-    );
   }
 
   /// Lista comandas abertas
@@ -428,6 +578,7 @@ class ApiService {
 
   /// Fecha conexões
   void dispose() {
+    _imageCache.clear();
     _client.close();
   }
 }

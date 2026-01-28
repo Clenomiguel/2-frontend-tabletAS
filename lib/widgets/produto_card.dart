@@ -1,90 +1,43 @@
 // lib/widgets/produto_card.dart
-// Card de exibição do produto no grid
 
 import 'package:flutter/material.dart';
-
 import '../models/cardapio_models.dart';
-import '../services/api_service.dart';
-import '../utils/parsing_utils.dart';
+import '../models/produto_models.dart';
+import 'base64_image.dart';
 
 class ProdutoCard extends StatelessWidget {
-  final ProdutoNoCardapio produto;
+  final CardapioProduto produtoCardapio;
   final VoidCallback? onTap;
 
   const ProdutoCard({
     super.key,
-    required this.produto,
+    required this.produtoCardapio,
     this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
+    final produto = produtoCardapio.produto;
+    final preco = produtoCardapio.precoEfetivo;
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: InkWell(
+        onTap: onTap,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Imagem
             Expanded(
               flex: 3,
-              child: Stack(
-                children: [
-                  ClipRRect(
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(16),
-                    ),
-                    child: Image.network(
-                      Api.instance.getProdutoImageUrl(
-                        produto.produto.grid,
-                        size: 'medium',
-                      ),
-                      width: double.infinity,
-                      height: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _buildPlaceholder(),
-                      loadingBuilder: (_, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return _buildLoadingPlaceholder();
-                      },
-                    ),
-                  ),
-                  // Badge de promoção
-                  if (produto.temPromocao)
-                    Positioned(
-                      top: 8,
-                      left: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Text(
-                          'PROMO',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
+              child: ProdutoImage(
+                produtoId: produtoCardapio.produtoId,
+                width: double.infinity,
+                fit: BoxFit.cover,
               ),
             ),
 
@@ -92,24 +45,28 @@ class ProdutoCard extends StatelessWidget {
             Expanded(
               flex: 2,
               child: Padding(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Nome
                     Text(
-                      produto.produto.nomeExibicao,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                      produto?.nome ?? 'Produto',
                       style: const TextStyle(
                         fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        height: 1.2,
+                        fontWeight: FontWeight.bold,
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const Spacer(),
-                    // Preços
-                    _buildPrecos(),
+                    Text(
+                      'R\$ ${preco.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).primaryColor,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -119,63 +76,136 @@ class ProdutoCard extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _buildPlaceholder() {
-    return Container(
-      color: Colors.grey[200],
-      child: const Center(
-        child: Icon(
-          Icons.fastfood,
-          size: 48,
-          color: Colors.grey,
+class ProductCard extends StatelessWidget {
+  final Produto produto;
+  final VoidCallback? onTap;
+  final bool showPrice;
+  final bool compact;
+
+  const ProductCard({
+    super.key,
+    required this.produto,
+    this.onTap,
+    this.showPrice = true,
+    this.compact = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (compact) return _buildCompact(context);
+    return _buildFull(context);
+  }
+
+  Widget _buildFull(BuildContext context) {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        onTap: onTap,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AspectRatio(
+              aspectRatio: 16 / 10,
+              child: ProdutoImage(
+                produtoId: produto.grid,
+                fit: BoxFit.cover,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    produto.nome,
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (produto.descricao != null &&
+                      produto.descricao!.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      produto.descricao!,
+                      style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                  if (showPrice) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'R\$ ${produto.preco.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).primaryColor,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildLoadingPlaceholder() {
-    return Container(
-      color: Colors.grey[200],
-      child: const Center(
-        child: CircularProgressIndicator(
-          strokeWidth: 2,
-          color: Color(0xFF6B21A8),
+  Widget _buildCompact(BuildContext context) {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      child: InkWell(
+        onTap: onTap,
+        child: Row(
+          children: [
+            SizedBox(
+              width: 80,
+              height: 80,
+              child: ProdutoImage(produtoId: produto.grid, fit: BoxFit.cover),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      produto.nome,
+                      style: const TextStyle(
+                          fontSize: 14, fontWeight: FontWeight.w600),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (showPrice) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'R\$ ${produto.preco.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).primaryColor,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.only(right: 12),
+              child: Icon(Icons.chevron_right, color: Colors.grey),
+            ),
+          ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildPrecos() {
-    if (produto.temPromocao && produto.precoPromocao != null) {
-      return Row(
-        children: [
-          Text(
-            ParsingUtils.formatCurrency(produto.precoPromocao),
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF6B21A8),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            ParsingUtils.formatCurrency(produto.preco),
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[500],
-              decoration: TextDecoration.lineThrough,
-            ),
-          ),
-        ],
-      );
-    }
-
-    return Text(
-      ParsingUtils.formatCurrency(produto.preco),
-      style: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.bold,
-        color: Color(0xFF6B21A8),
       ),
     );
   }
