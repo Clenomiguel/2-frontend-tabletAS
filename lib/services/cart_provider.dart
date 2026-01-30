@@ -24,7 +24,10 @@ class CartProvider extends ChangeNotifier {
   int get quantidadeTotal => _cart.quantidadeTotal;
   bool get isEmpty => _cart.isEmpty;
   bool get isNotEmpty => _cart.isNotEmpty;
-  int? get mesa => _cart.mesa;
+
+  // ALTERADO: Getter de comanda
+  String? get comanda => _cart.comanda;
+
   ComandaStatus get status => _status;
   String? get errorMessage => _errorMessage;
   bool get isLoading => _isLoading;
@@ -88,9 +91,9 @@ class CartProvider extends ChangeNotifier {
     updateQuantity(itemId, item.quantidade - 1);
   }
 
-  /// Define mesa
-  void setMesa(int? mesa) {
-    _cart = _cart.setMesa(mesa);
+  // ALTERADO: Método para definir a comanda (Substitui setMesa)
+  void setComanda(String? numeroComanda) {
+    _cart = _cart.setComanda(numeroComanda);
     notifyListeners();
   }
 
@@ -108,9 +111,9 @@ class CartProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Reinicia completamente (limpa tudo incluindo mesa)
+  /// Reinicia completamente (limpa tudo incluindo comanda)
   void reset() {
-    _cart = Cart();
+    _cart = Cart(); // Isso cria um novo Cart vazio sem comanda
     _status = ComandaStatus.pendente;
     _errorMessage = null;
     _isLoading = false;
@@ -135,7 +138,8 @@ class CartProvider extends ChangeNotifier {
         _status = ComandaStatus.confirmada;
       } else {
         _status = ComandaStatus.erro;
-        _errorMessage = response.error ?? response.message ?? 'Erro ao registrar comanda';
+        _errorMessage =
+            response.error ?? response.message ?? 'Erro ao registrar comanda';
       }
 
       notifyListeners();
@@ -152,5 +156,6 @@ class CartProvider extends ChangeNotifier {
   }
 
   /// Formata total para exibição
-  String get totalFormatado => 'R\$ ${total.toStringAsFixed(2).replaceAll('.', ',')}';
+  String get totalFormatado =>
+      'R\$ ${total.toStringAsFixed(2).replaceAll('.', ',')}';
 }

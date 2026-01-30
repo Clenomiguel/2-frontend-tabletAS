@@ -1,7 +1,7 @@
-name: totem_app
-description: Aplicativo de autoatendimento para restaurante com integração Linx Empório
+name: Sistem_Comanda
+description: Terminal de Comanda de Autoatendimento - Autosystem
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.0
 
 environment:
   sdk: '>=3.0.0 <4.0.0'

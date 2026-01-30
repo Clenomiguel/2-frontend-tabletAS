@@ -416,13 +416,13 @@
       "languageVersion": "3.3"
     },
     {
-      "name": "totem_app",
+      "name": "Sistem_Comanda",
       "rootUri": "../",
       "packageUri": "lib/",
       "languageVersion": "3.0"
     }
   ],
-  "generated": "2026-01-29T23:08:05.682706Z",
+  "generated": "2026-01-30T13:12:07.634684Z",
   "generator": "pub",
   "generatorVersion": "3.7.2",
   "flutterRoot": "file:///C:/src/flutter",

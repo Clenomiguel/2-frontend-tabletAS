@@ -8,7 +8,6 @@ import 'package:http/http.dart' as http;
 import '../models/produto_models.dart';
 import '../models/cardapio_models.dart';
 import '../models/cart_models.dart';
-import 'package:flutter/foundation.dart'; // Para debugPrint
 
 class ApiException implements Exception {
   final String message;
@@ -100,6 +99,25 @@ class ApiService {
 
       final response = await _client
           .post(url, headers: _headers, body: jsonEncode(body))
+          .timeout(config.timeout);
+
+      return _handleResponse(response);
+    } on SocketException {
+      throw ApiException('Sem conexão com o servidor');
+    } on http.ClientException catch (e) {
+      throw ApiException('Erro de conexão: $e');
+    }
+  }
+
+  Future<dynamic> _put(String path, Map<String, dynamic> body,
+      [Map<String, dynamic>? queryParams]) async {
+    try {
+      final url = _buildUrl(path, queryParams);
+      print('🌐 PUT: $url');
+      print('📦 Body: $body');
+
+      final response = await _client
+          .put(url, headers: _headers, body: jsonEncode(body))
           .timeout(config.timeout);
 
       return _handleResponse(response);
@@ -238,7 +256,6 @@ class ApiService {
   // IMAGENS - URLs
   // ============================================================
 
-  /// URL da imagem do produto
   String getProdutoImageUrl(int produtoId, {String? size}) {
     final url = '${config.baseUrl}/api/v1/produtos/$produtoId/imagens';
     if (size != null) {
@@ -247,7 +264,6 @@ class ApiService {
     return url;
   }
 
-  /// URL da imagem da seção
   String getSecaoImageUrl(int secaoId, {String? size}) {
     final url = '${config.baseUrl}/api/v1/cardapios/secoes/$secaoId/imagens';
     if (size != null) {
@@ -264,18 +280,25 @@ class ApiService {
     final cacheKey = 'produto_$produtoId';
 
     if (_imageCache.containsKey(cacheKey)) {
+      print('📷 Imagem do produto $produtoId (cache)');
       return _imageCache[cacheKey];
     }
 
     try {
+      print('📷 Buscando imagem do produto $produtoId...');
       final data = await _get('/api/v1/produtos/$produtoId/imagens');
+      print('📷 Resposta: ${data.runtimeType}');
+
       String? base64String = _extractBase64(data);
 
       if (base64String != null && base64String.isNotEmpty) {
+        print(
+            '📷 Imagem encontrada para produto $produtoId (${base64String.length} chars)');
         final bytes = base64ToBytes(base64String);
         _imageCache[cacheKey] = bytes;
         return bytes;
       }
+      print('⚠️ Produto $produtoId sem imagem');
       return null;
     } catch (e) {
       print('⚠️ Erro ao buscar imagem do produto $produtoId: $e');
@@ -346,16 +369,200 @@ class ApiService {
   // COMANDAS
   // ============================================================
 
+  /// Adiciona produtos a uma comanda (cria se não existir)
+  /// Este é o método principal usado pelo autoatendimento
+  Future<ComandaResponse> adicionarProdutosComanda({
+    required String comandaNumero,
+    required List<CartItem> items,
+    String? clienteNome,
+    String? clienteTelefone,
+    String? clienteCpf,
+  }) async {
+    print('🚀 Processando pedido para comanda: $comandaNumero');
+
+    try {
+      // 1. Verificar se a comanda existe
+      bool comandaCriada = false;
+      Map<String, dynamic>? comanda;
+
+      try {
+        comanda = await getComanda(comandaNumero);
+        print('✅ Comanda encontrada: $comanda');
+
+        // 2. Verificar status da comanda (L = Livre, A = Aberta/Aguardando)
+        final status = comanda['status']?.toString().toUpperCase() ?? '';
+        if (status != 'L' && status != 'A' && status.isEmpty) {
+          print('⚠️ Comanda com status $status - será criada nova');
+          comanda = null; // Forçar criação de nova comanda
+        }
+      } catch (e) {
+        print('ℹ️ Comanda $comandaNumero não existe - será criada');
+        comanda = null;
+      }
+
+      // 3. Se comanda não existe ou não está disponível, criar nova
+      if (comanda == null) {
+        print('📝 Criando comanda: $comandaNumero');
+
+        final comandaData = {
+          'comanda': comandaNumero,
+          'empresa': config.empresaId,
+          'quantidade_pessoas': 1,
+          'status': 'A',
+          if (clienteNome != null && clienteNome.isNotEmpty)
+            'cliente_nome': clienteNome,
+        };
+
+        try {
+          comanda = await _post('/api/v1/comandas', comandaData);
+          print('✅ Comanda criada: $comanda');
+          comandaCriada = true;
+
+          // Liberar a comanda para uso
+          await _post('/api/v1/comandas/$comandaNumero/liberar', {});
+          print('✅ Comanda liberada');
+        } catch (e) {
+          print('❌ Erro ao criar comanda: $e');
+          return ComandaResponse(
+            success: false,
+            error: 'Erro ao criar comanda: $e',
+          );
+        }
+      }
+
+      // 4. Adicionar cada produto na comanda
+      for (final item in items) {
+        final produtoData = {
+          'produto': item.produto.grid,
+          'quantidade': item.quantidade,
+          'preco_unit': item.precoUnitario,
+          'observacao': item.observacao ?? '',
+        };
+
+        final queryParams = {
+          'terminal_id': config.terminalId,
+          'empresa_id': config.empresaId,
+          if (clienteNome != null && clienteNome.isNotEmpty)
+            'cliente_nome': clienteNome,
+        };
+
+        print('📦 Adicionando produto: ${item.produto.nome}');
+
+        final produtoResponse = await _post(
+          '/api/v1/comandas/$comandaNumero/produtos',
+          produtoData,
+          queryParams,
+        );
+
+        final codigoProduto = produtoResponse['codigo'];
+        print('✅ Produto adicionado com código: $codigoProduto');
+
+        // Adicionar complementos
+        if (codigoProduto != null && item.complementos.isNotEmpty) {
+          for (final comp in item.complementos) {
+            print('  ➕ Complemento: ${comp.nome}');
+            await _post(
+              '/api/v1/comandas/produtos/$codigoProduto/complementos',
+              {
+                'complemento': comp.produtoGrid,
+                'quantidade': comp.quantidade,
+                'preco': comp.preco,
+              },
+            );
+          }
+        }
+
+        // Registrar composições removidas
+        if (codigoProduto != null && item.composicoesRemovidas.isNotEmpty) {
+          for (final removida in item.composicoesRemovidas) {
+            print('  ➖ Removido: ${removida.materiaPrima}');
+            await _post(
+              '/api/v1/comandas/produtos/$codigoProduto/composicao',
+              {
+                'materia_prima': removida.materiaPrima,
+                'acao': 'R',
+              },
+            );
+          }
+        }
+      }
+
+      // 5. Atualizar status da comanda para 'A' (Aguardando/Aberta) - só se não foi criada agora
+      if (!comandaCriada) {
+        try {
+          await _put('/api/v1/comandas/$comandaNumero', {
+            'status': 'A',
+          });
+          print('✅ Status da comanda atualizado para A');
+        } catch (e) {
+          try {
+            await _post('/api/v1/comandas/$comandaNumero/status', {
+              'status': 'A',
+            });
+            print('✅ Status da comanda atualizado para A (via POST)');
+          } catch (e2) {
+            print('⚠️ Não foi possível atualizar status: $e2');
+          }
+        }
+      }
+
+      // 6. Registrar cliente se informado
+      if (clienteNome != null ||
+          clienteTelefone != null ||
+          clienteCpf != null) {
+        try {
+          await _put('/api/v1/comandas/$comandaNumero', {
+            if (clienteNome != null) 'cliente_nome': clienteNome,
+          });
+          print('✅ Dados do cliente registrados');
+        } catch (e) {
+          print('⚠️ Não foi possível registrar cliente: $e');
+        }
+      }
+
+      print('🎉 Pedido finalizado com sucesso na comanda $comandaNumero');
+
+      return ComandaResponse(
+        success: true,
+        comandaId: comandaNumero,
+        message: comandaCriada
+            ? 'Comanda criada e pedido registrado!'
+            : 'Pedido registrado com sucesso!',
+      );
+    } catch (e) {
+      print('❌ Erro ao adicionar produtos na comanda: $e');
+      return ComandaResponse(success: false, error: e.toString());
+    }
+  }
+
+  /// Registra uma nova comanda (usado quando não há comanda existente)
   Future<ComandaResponse> registrarComanda(Cart cart) async {
-    final comandaNumeroGerado = cart.mesa?.toString() ??
-        'T${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}';
+    String? comandaFinal = cart.comanda?.toString();
+    String? clienteFinal = cart.clienteNome;
+
+    // Correção: Se a comanda estiver vazia mas o nome do cliente for numérico
+    if ((comandaFinal == null || comandaFinal.isEmpty) &&
+        clienteFinal != null &&
+        int.tryParse(clienteFinal) != null) {
+      print('⚠️ CORREÇÃO: Usando "$clienteFinal" como COMANDA');
+      comandaFinal = clienteFinal;
+      clienteFinal = null;
+    }
+
+    final comandaNumeroParaEnvio = comandaFinal?.isNotEmpty == true
+        ? comandaFinal!
+        : 'T${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}';
+
+    print('🚀 Criando nova comanda: $comandaNumeroParaEnvio');
 
     try {
       final comandaData = {
-        'comanda': comandaNumeroGerado,
+        'comanda': comandaNumeroParaEnvio,
         'empresa': config.empresaId,
         'quantidade_pessoas': 1,
-        if (cart.clienteNome != null) 'cliente_nome': cart.clienteNome,
+        'status': 'A',
+        if (clienteFinal != null && clienteFinal.isNotEmpty)
+          'cliente_nome': clienteFinal,
       };
 
       final comanda = await _post('/api/v1/comandas', comandaData);
@@ -378,7 +585,8 @@ class ApiService {
         final queryParams = {
           'terminal_id': config.terminalId,
           'empresa_id': config.empresaId,
-          if (cart.clienteNome != null) 'cliente_nome': cart.clienteNome,
+          if (clienteFinal != null && clienteFinal.isNotEmpty)
+            'cliente_nome': clienteFinal,
         };
 
         final produtoResponse = await _post(
@@ -431,7 +639,6 @@ class ApiService {
     return data as Map<String, dynamic>;
   }
 
-  /// Busca comanda completa com todos os produtos
   Future<Map<String, dynamic>> getComandaCompleta(String comanda) async {
     final data = await _get('/api/v1/comandas/$comanda/completo');
     return data as Map<String, dynamic>;

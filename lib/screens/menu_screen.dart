@@ -847,12 +847,30 @@ class _ProdutoImageWidgetState extends State<_ProdutoImageWidget> {
   @override
   void initState() {
     super.initState();
+    print('🖼️ _ProdutoImageWidget init: produtoId=${widget.produtoId}');
     _loadImage();
   }
 
+  @override
+  void didUpdateWidget(covariant _ProdutoImageWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Se o produtoId mudou, recarregar imagem
+    if (oldWidget.produtoId != widget.produtoId) {
+      print(
+          '🖼️ _ProdutoImageWidget update: ${oldWidget.produtoId} -> ${widget.produtoId}');
+      _loadImage();
+    }
+  }
+
   Future<void> _loadImage() async {
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+    });
+
     // Primeiro tenta base64 direto
     if (widget.imagemBase64 != null && widget.imagemBase64!.isNotEmpty) {
+      print('🖼️ Produto ${widget.produtoId}: usando base64 direto');
       final bytes = safeBase64Decode(widget.imagemBase64!);
       if (bytes != null) {
         setState(() {
@@ -865,6 +883,7 @@ class _ProdutoImageWidgetState extends State<_ProdutoImageWidget> {
 
     // Se não tem, busca da API
     try {
+      print('🖼️ Produto ${widget.produtoId}: buscando da API...');
       final bytes = await Api.instance.getProdutoImagem(widget.produtoId);
       if (mounted) {
         setState(() {
@@ -872,8 +891,11 @@ class _ProdutoImageWidgetState extends State<_ProdutoImageWidget> {
           _isLoading = false;
           _hasError = bytes == null;
         });
+        print(
+            '🖼️ Produto ${widget.produtoId}: ${bytes != null ? "OK" : "sem imagem"}');
       }
     } catch (e) {
+      print('🖼️ Produto ${widget.produtoId}: ERRO $e');
       if (mounted) {
         setState(() {
           _isLoading = false;

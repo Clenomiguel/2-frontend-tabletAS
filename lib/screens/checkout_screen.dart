@@ -8,7 +8,7 @@ import 'package:provider/provider.dart';
 import '../models/cart_models.dart';
 import '../services/cart_provider.dart';
 import '../services/api_service.dart';
-import '../utils/parsing_utils.dart';
+import '../utils/parsing_utils.dart'; // Certifique-se que esse arquivo existe, ou remova se não usar
 
 class CheckoutScreen extends StatefulWidget {
   const CheckoutScreen({super.key});
@@ -18,17 +18,18 @@ class CheckoutScreen extends StatefulWidget {
 }
 
 class _CheckoutScreenState extends State<CheckoutScreen> {
-  final _mesaController = TextEditingController();
+  // 1. ALTERADO: De mesa para comanda
+  final _comandaController = TextEditingController();
   final _nomeController = TextEditingController();
   final _cpfController = TextEditingController();
-  
+
   bool _isProcessing = false;
   String? _error;
-  ComandaResponse? _response;
+  // REMOVIDO: ComandaResponse? _response; (não estava sendo usado)
 
   @override
   void dispose() {
-    _mesaController.dispose();
+    _comandaController.dispose(); // Alterado
     _nomeController.dispose();
     _cpfController.dispose();
     super.dispose();
@@ -38,19 +39,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final cart = context.read<CartProvider>();
 
     // Validações
-    if (_mesaController.text.isEmpty) {
-      setState(() => _error = 'Informe o número da mesa');
+    if (_comandaController.text.trim().isEmpty) {
+      setState(() => _error = 'Informe o número da comanda');
       return;
     }
 
-    final mesa = int.tryParse(_mesaController.text);
-    if (mesa == null || mesa <= 0) {
-      setState(() => _error = 'Número da mesa inválido');
-      return;
-    }
+    // 2. ATUALIZADO: Salva a comanda no Provider
+    cart.setComanda(_comandaController.text.trim());
 
-    // Atualiza dados no carrinho
-    cart.setMesa(mesa);
     if (_nomeController.text.isNotEmpty) {
       cart.setCliente(
         nome: _nomeController.text,
@@ -65,17 +61,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     try {
       final response = await cart.registrarComanda();
-      
+
       setState(() {
-        _response = response;
         _isProcessing = false;
       });
 
       if (response.success) {
+        if (!mounted) return;
         _showSuccessDialog(response);
       } else {
         setState(() {
-          _error = response.error ?? response.message ?? 'Erro ao enviar pedido';
+          _error =
+              response.error ?? response.message ?? 'Erro ao enviar pedido';
         });
       }
     } on ApiException catch (e) {
@@ -207,7 +204,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     decoration: BoxDecoration(
                       color: Colors.red.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                      border:
+                          Border.all(color: Colors.red.withValues(alpha: 0.3)),
                     ),
                     child: Row(
                       children: [
@@ -317,41 +315,42 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       children: [
         // Lista de itens resumida
         ...cart.items.map((item) => Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Row(
-            children: [
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF6B21A8).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Center(
-                  child: Text(
-                    '${item.quantidade}x',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                      color: Color(0xFF6B21A8),
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                children: [
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF6B21A8).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Center(
+                      child: Text(
+                        '${item.quantidade}x',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                          color: Color(0xFF6B21A8),
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      item.produto.nomeExibicao,
+                      style: const TextStyle(fontSize: 15),
+                    ),
+                  ),
+                  Text(
+                    // Use o formato do seu parsing utils ou item.precoTotal.toStringAsFixed(2)
+                    'R\$ ${item.precoTotal.toStringAsFixed(2).replaceAll('.', ',')}',
+                    style: const TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  item.produto.nomeExibicao,
-                  style: const TextStyle(fontSize: 15),
-                ),
-              ),
-              Text(
-                ParsingUtils.formatCurrency(item.precoTotal),
-                style: const TextStyle(fontWeight: FontWeight.w500),
-              ),
-            ],
-          ),
-        )),
+            )),
 
         const Divider(height: 24),
 
@@ -383,15 +382,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   Widget _buildIdentificationForm() {
     return Column(
       children: [
-        // Mesa (obrigatório)
+        // 3. ALTERADO: Campo Comanda
         TextField(
-          controller: _mesaController,
-          keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          controller: _comandaController,
+          // Se sua comanda for SÓ NÚMEROS, use TextInputType.number
+          // Se tiver LETRAS (ex: T123), use TextInputType.text
+          keyboardType: TextInputType.text,
+          textCapitalization: TextCapitalization.characters, // Força maiúsculas
           decoration: InputDecoration(
-            labelText: 'Número da Mesa *',
-            hintText: 'Digite o número da sua mesa',
-            prefixIcon: const Icon(Icons.table_restaurant),
+            labelText: 'Número da Comanda *',
+            hintText: 'Digite o número da comanda',
+            prefixIcon: const Icon(Icons.confirmation_number), // Ícone adequado
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
             ),
@@ -458,7 +459,7 @@ class _CpfInputFormatter extends TextInputFormatter {
     TextEditingValue newValue,
   ) {
     final text = newValue.text.replaceAll(RegExp(r'\D'), '');
-    
+
     if (text.length > 11) {
       return oldValue;
     }

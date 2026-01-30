@@ -153,13 +153,14 @@ class ComplementoSelecionado {
 /// Carrinho de compras
 class Cart {
   final List<CartItem> items;
-  final int? mesa;
+  // ALTERADO: De mesa(int) para comanda(String)
+  final String? comanda;
   final String? clienteNome;
   final String? clienteCpf;
 
   Cart({
     this.items = const [],
-    this.mesa,
+    this.comanda, // Atualizado no construtor
     this.clienteNome,
     this.clienteCpf,
   });
@@ -192,16 +193,16 @@ class Cart {
     );
   }
 
-  /// Define mesa
-  Cart setMesa(int? mesa) {
-    return copyWith(mesa: mesa);
+  /// Define Comanda (Antigo setMesa)
+  Cart setComanda(String? novaComanda) {
+    return copyWith(comanda: novaComanda);
   }
 
   /// Define dados do cliente
   Cart setCliente({String? nome, String? cpf}) {
     return Cart(
       items: items,
-      mesa: mesa,
+      comanda: comanda, // Mantém a comanda atual
       clienteNome: nome ?? clienteNome,
       clienteCpf: cpf ?? clienteCpf,
     );
@@ -209,18 +210,20 @@ class Cart {
 
   /// Limpa o carrinho
   Cart clear() {
-    return Cart(mesa: mesa, clienteNome: clienteNome, clienteCpf: clienteCpf);
+    // Mantém a comanda definida mesmo ao limpar os itens, caso o cliente continue pedindo
+    return Cart(
+        comanda: comanda, clienteNome: clienteNome, clienteCpf: clienteCpf);
   }
 
   Cart copyWith({
     List<CartItem>? items,
-    int? mesa,
+    String? comanda, // Alterado
     String? clienteNome,
     String? clienteCpf,
   }) {
     return Cart(
       items: items ?? this.items,
-      mesa: mesa ?? this.mesa,
+      comanda: comanda ?? this.comanda,
       clienteNome: clienteNome ?? this.clienteNome,
       clienteCpf: clienteCpf ?? this.clienteCpf,
     );
@@ -229,7 +232,8 @@ class Cart {
   Map<String, dynamic> toJson() {
     return {
       'items': items.map((i) => i.toJson()).toList(),
-      'mesa': mesa,
+      // ALTERADO: Envia 'numero' em vez de 'mesa'
+      'numero': comanda,
       'cliente_nome': clienteNome,
       'cliente_cpf': clienteCpf,
       'total': total,
