@@ -139,45 +139,46 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   Widget _buildCartItem(CartItem item, CartProvider cart) {
+    // Debug: verificar dados do produto
+    print('🛒 CartItem: grid=${item.produto.grid}, nome=${item.produto.nome}');
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: _bgCard,
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Column(
-        children: [
-          // Item principal
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            // Linha principal: Imagem + Info + Preço/Quantidade
+            Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Imagem do produto
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: Container(
+                  child: SizedBox(
                     width: 80,
                     height: 80,
-                    color: _bgDark,
-                    child: item.produto.imagemBase64 != null
-                        ? Image.memory(
-                            _decodeBase64(item.produto.imagemBase64!),
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => _buildPlaceholder(),
-                          )
+                    child: item.produto.grid > 0
+                        ? _CartItemImage(produtoId: item.produto.grid)
                         : _buildPlaceholder(),
                   ),
                 ),
                 const SizedBox(width: 16),
 
-                // Detalhes do produto
+                // Detalhes do produto (nome, preço unitário, preparo, etc)
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Nome do produto
                       Text(
-                        item.produto.nome,
+                        item.produto.nome.isNotEmpty
+                            ? item.produto.nome
+                            : 'Produto',
                         style: const TextStyle(
                           color: _textWhite,
                           fontSize: 16,
@@ -191,11 +192,63 @@ class _CartScreenState extends State<CartScreen> {
                         'R\$ ${item.precoUnitario.toStringAsFixed(2).replaceAll('.', ',')} un.',
                         style: const TextStyle(color: _textGrey, fontSize: 13),
                       ),
+
+                      // Preparo selecionado
+                      if (item.preparo != null &&
+                          item.preparo!.descricao != null) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: _accentRed.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.restaurant,
+                                  color: _accentRed, size: 14),
+                              const SizedBox(width: 4),
+                              Text(
+                                item.preparo!.descricao!,
+                                style: const TextStyle(
+                                    color: _accentRed,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+
+                      // Composições removidas
+                      if (item.composicoesRemovidas.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        ...item.composicoesRemovidas.map((comp) => Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.remove_circle_outline,
+                                      color: _accentRed, size: 14),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      'Sem ${comp.nome ?? comp.materiaPrimaNome ?? 'ingrediente'}',
+                                      style: const TextStyle(
+                                          color: _textGrey, fontSize: 12),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )),
+                      ],
+
                       // Complementos
                       if (item.complementos.isNotEmpty) ...[
                         const SizedBox(height: 8),
                         ...item.complementos.map((comp) => Padding(
-                              padding: const EdgeInsets.only(top: 2),
+                              padding: const EdgeInsets.only(top: 4),
                               child: Row(
                                 children: [
                                   const Icon(Icons.add_circle_outline,
@@ -217,6 +270,7 @@ class _CartScreenState extends State<CartScreen> {
                               ),
                             )),
                       ],
+
                       // Observação
                       if (item.observacao != null &&
                           item.observacao!.isNotEmpty) ...[
@@ -249,89 +303,96 @@ class _CartScreenState extends State<CartScreen> {
                     ],
                   ),
                 ),
+                const SizedBox(width: 12),
 
-                // Preço total do item
+                // Coluna direita: Quantidade + Preço + Remover
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(
-                      'R\$ ${item.precoTotal.toStringAsFixed(2).replaceAll('.', ',')}',
-                      style: const TextStyle(
-                        color: _textWhite,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    // Botão remover
-                    IconButton(
-                      onPressed: () => cart.removeItem(item.id),
-                      icon: const Icon(Icons.delete_outline, color: _accentRed),
-                      tooltip: 'Remover',
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // Controle de quantidade
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: const BoxDecoration(
-              color: _bgDark,
-              borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Quantidade:',
-                  style: TextStyle(color: _textGrey, fontSize: 14),
-                ),
-                // Controles de quantidade
-                Container(
-                  decoration: BoxDecoration(
-                    color: _bgCard,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      // Botão diminuir
-                      IconButton(
-                        onPressed: item.quantidade > 1
-                            ? () => cart.updateQuantity(
-                                item.id, item.quantidade - 1)
-                            : null,
-                        icon: Icon(
-                          Icons.remove,
-                          color: item.quantidade > 1 ? _textWhite : _textGrey,
+                    // Linha: Quantidade + Preço
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Controle de quantidade
+                        Container(
+                          decoration: BoxDecoration(
+                            color: _bgDark,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              GestureDetector(
+                                onTap: item.quantidade > 1
+                                    ? () => cart.updateQuantity(
+                                        item.id, item.quantidade - 1)
+                                    : null,
+                                child: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  child: Icon(
+                                    Icons.remove,
+                                    color: item.quantidade > 1
+                                        ? _textWhite
+                                        : _textGrey,
+                                    size: 18,
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 8),
+                                child: Text(
+                                  '${item.quantidade}',
+                                  style: const TextStyle(
+                                    color: _textWhite,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () => cart.updateQuantity(
+                                    item.id, item.quantidade + 1),
+                                child: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  child: const Icon(
+                                    Icons.add,
+                                    color: _textWhite,
+                                    size: 18,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      // Quantidade
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          '${item.quantidade}',
+                        const SizedBox(width: 12),
+                        // Preço total
+                        Text(
+                          'R\$ ${item.precoTotal.toStringAsFixed(2).replaceAll('.', ',')}',
                           style: const TextStyle(
                             color: _textWhite,
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    // Botão remover
+                    GestureDetector(
+                      onTap: () => cart.removeItem(item.id),
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        child: const Icon(Icons.delete_outline,
+                            color: _accentRed, size: 22),
                       ),
-                      // Botão aumentar
-                      IconButton(
-                        onPressed: () =>
-                            cart.updateQuantity(item.id, item.quantidade + 1),
-                        icon: const Icon(Icons.add, color: _textWhite),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1537,6 +1598,90 @@ class _CpfInputFormatter extends TextInputFormatter {
     return TextEditingValue(
       text: buffer.toString(),
       selection: TextSelection.collapsed(offset: buffer.length),
+    );
+  }
+}
+
+/// Widget para carregar imagem do produto no carrinho via API
+class _CartItemImage extends StatefulWidget {
+  final int produtoId;
+
+  const _CartItemImage({required this.produtoId});
+
+  @override
+  State<_CartItemImage> createState() => _CartItemImageState();
+}
+
+class _CartItemImageState extends State<_CartItemImage> {
+  Uint8List? _imageBytes;
+  bool _isLoading = true;
+  bool _hasError = false;
+
+  static const _bgCard = Color(0xFF2D2D2D);
+  static const _textGrey = Color(0xFF9E9E9E);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadImage();
+  }
+
+  Future<void> _loadImage() async {
+    try {
+      final bytes = await Api.instance.getProdutoImagem(widget.produtoId);
+      if (mounted) {
+        setState(() {
+          _imageBytes = bytes;
+          _isLoading = false;
+          _hasError = bytes == null;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _hasError = true;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Container(
+        color: _bgCard,
+        child: const Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              color: _textGrey,
+              strokeWidth: 2,
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (_hasError || _imageBytes == null) {
+      return Container(
+        color: _bgCard,
+        child: const Center(
+          child: Icon(Icons.restaurant, color: _textGrey, size: 32),
+        ),
+      );
+    }
+
+    return Image.memory(
+      _imageBytes!,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => Container(
+        color: _bgCard,
+        child: const Center(
+          child: Icon(Icons.restaurant, color: _textGrey, size: 32),
+        ),
+      ),
     );
   }
 }

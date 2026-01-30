@@ -50,6 +50,11 @@ class _MenuScreenState extends State<MenuScreen> {
   // Timer de inatividade
   Timer? _inactivityTimer;
 
+  // Busca
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  List<CardapioProduto> _searchResults = [];
+
   // ============================================================
   // CONFIGURAÇÃO DE TIMEOUT POR INATIVIDADE
   // ============================================================
@@ -76,6 +81,7 @@ class _MenuScreenState extends State<MenuScreen> {
   @override
   void dispose() {
     _inactivityTimer?.cancel();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -110,6 +116,41 @@ class _MenuScreenState extends State<MenuScreen> {
   /// Registra atividade do usuário e reseta o timer
   void _registerUserActivity() {
     _resetInactivityTimer();
+  }
+
+  /// Realiza busca em todas as categorias
+  void _onSearch(String query) {
+    _registerUserActivity();
+    setState(() {
+      _searchQuery = query.trim().toLowerCase();
+
+      if (_searchQuery.isEmpty) {
+        _searchResults = [];
+        return;
+      }
+
+      // Busca em todas as seções
+      _searchResults = [];
+      for (final secao in _cardapio?.secoes ?? []) {
+        for (final produto in secao.produtos) {
+          final nome = produto.produto.nome.toLowerCase();
+          final descricao = (produto.produto.descricao ?? '').toLowerCase();
+
+          if (nome.contains(_searchQuery) || descricao.contains(_searchQuery)) {
+            _searchResults.add(produto);
+          }
+        }
+      }
+    });
+  }
+
+  /// Limpa a busca
+  void _clearSearch() {
+    _searchController.clear();
+    setState(() {
+      _searchQuery = '';
+      _searchResults = [];
+    });
   }
 
   Future<void> _loadCardapio() async {
@@ -151,7 +192,6 @@ class _MenuScreenState extends State<MenuScreen> {
         builder: (_) => ProdutoScreen(
           produtoGrid: produto.produtoId,
           precoCardapio: produto.preco,
-          nomeProduto: produto.produto.nomeExibicao,
         ),
       ),
     ).then((_) => _resetInactivityTimer()); // Reseta ao voltar
@@ -353,14 +393,30 @@ class _MenuScreenState extends State<MenuScreen> {
                 color: _bgSidebar,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(Icons.search, color: _textGrey, size: 20),
-                  SizedBox(width: 12),
-                  Text(
-                    'BUSCAR',
-                    style: TextStyle(color: _textGrey, fontSize: 14),
+                  const Icon(Icons.search, color: _textGrey, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: _onSearch,
+                      style: const TextStyle(color: _textWhite, fontSize: 14),
+                      decoration: const InputDecoration(
+                        hintText: 'Buscar produtos...',
+                        hintStyle: TextStyle(color: _textGrey, fontSize: 14),
+                        border: InputBorder.none,
+                        isDense: true,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
                   ),
+                  if (_searchQuery.isNotEmpty)
+                    GestureDetector(
+                      onTap: _clearSearch,
+                      child:
+                          const Icon(Icons.close, color: _textGrey, size: 20),
+                    ),
                 ],
               ),
             ),
@@ -542,6 +598,8 @@ class _MenuScreenState extends State<MenuScreen> {
           // Links inferiores
           const Divider(color: Color(0xFF404040), height: 1),
           _buildSidebarLink('SOBRE'),
+          _buildSidebarLink('PONTOS'),
+          _buildSidebarLink('AVALIE'),
           const SizedBox(height: 16),
         ],
       ),
@@ -647,6 +705,11 @@ class _MenuScreenState extends State<MenuScreen> {
 
   /// Área principal com grid de produtos
   Widget _buildMainContent() {
+    // Se tem busca ativa, mostra resultados da busca
+    if (_searchQuery.isNotEmpty) {
+      return _buildSearchResults();
+    }
+
     final secoes = _cardapio!.secoesOrdenadas;
     if (_selectedSecaoIndex >= secoes.length) return const SizedBox();
 
@@ -822,6 +885,119 @@ class _MenuScreenState extends State<MenuScreen> {
       ),
     );
   }
+
+  /// Widget para exibir resultados da busca
+  Widget _buildSearchResults() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header da busca
+        Container(
+          padding: const EdgeInsets.all(20),
+          child: Row(
+            children: [
+              const Icon(Icons.search, color: _accentRed, size: 28),
+              const SizedBox(width: 12),
+              Text(
+                'Resultados para "$_searchQuery"',
+                style: const TextStyle(
+                  color: _textWhite,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _accentRed,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${_searchResults.length} ${_searchResults.length == 1 ? 'item' : 'itens'}',
+                  style: const TextStyle(
+                    color: _textWhite,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              // Botão limpar busca
+              GestureDetector(
+                onTap: _clearSearch,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: _bgSidebar,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.close, color: _textGrey, size: 18),
+                      SizedBox(width: 8),
+                      Text(
+                        'Limpar busca',
+                        style: TextStyle(color: _textGrey, fontSize: 14),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Resultados ou mensagem de vazio
+        Expanded(
+          child: _searchResults.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.search_off,
+                        color: _textGrey,
+                        size: 64,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Nenhum produto encontrado para "$_searchQuery"',
+                        style: const TextStyle(
+                          color: _textGrey,
+                          fontSize: 18,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Tente buscar por outro termo',
+                        style: TextStyle(
+                          color: _textGrey,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : GridView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 4,
+                    childAspectRatio: 0.75,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                  ),
+                  itemCount: _searchResults.length,
+                  itemBuilder: (context, index) {
+                    return _buildProductCard(_searchResults[index]);
+                  },
+                ),
+        ),
+      ],
+    );
+  }
 }
 
 /// Widget para carregar imagem do produto via API
@@ -982,7 +1158,7 @@ class _CarouselWidgetState extends State<_CarouselWidget> {
   static const List<String> _carouselFiles = [
     '1.jpg',
     '2.jpg',
-    '3.mp4',
+    '3.jpg',
     // Adicione mais conforme necessário:
     // '4.png',
     // '5.jpg',

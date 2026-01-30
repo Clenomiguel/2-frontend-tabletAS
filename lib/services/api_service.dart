@@ -212,7 +212,51 @@ class ApiService {
 
   Future<ProdutoCompleto> getProdutoCompleto(int produtoId) async {
     final data = await _get('/api/v1/produtos/$produtoId/completo');
-    return ProdutoCompleto.fromJson(data);
+    final produtoCompleto = ProdutoCompleto.fromJson(data);
+
+    List<ProdutoComplemento> complementos = produtoCompleto.complementos;
+    List<ProdutoComposicao> composicao = produtoCompleto.composicao;
+    List<Preparo> preparos = produtoCompleto.preparos;
+
+    // Buscar complementos com detalhes (nome e preço)
+    try {
+      final complementosDetalhados = await getComplementosProduto(produtoId);
+      if (complementosDetalhados.isNotEmpty) {
+        complementos = complementosDetalhados;
+      }
+    } catch (e) {
+      print('⚠️ Erro ao buscar complementos detalhados: $e');
+    }
+
+    // Buscar composição com detalhes (nome da matéria-prima)
+    try {
+      final composicaoDetalhada = await getComposicaoProduto(produtoId);
+      if (composicaoDetalhada.isNotEmpty) {
+        composicao = composicaoDetalhada;
+      }
+    } catch (e) {
+      print('⚠️ Erro ao buscar composição detalhada: $e');
+    }
+
+    // Buscar preparos se não veio no completo
+    if (preparos.isEmpty) {
+      try {
+        final preparosData = await getPreparosProduto(produtoId);
+        if (preparosData.preparos.isNotEmpty) {
+          preparos = preparosData.preparos;
+        }
+      } catch (e) {
+        print('⚠️ Erro ao buscar preparos: $e');
+      }
+    }
+
+    return ProdutoCompleto(
+      produto: produtoCompleto.produto,
+      imagens: produtoCompleto.imagens,
+      complementos: complementos,
+      composicao: composicao,
+      preparos: preparos,
+    );
   }
 
   Future<PaginatedResponse<Produto>> getProdutos({

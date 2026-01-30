@@ -104,26 +104,19 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
       widget.precoCardapio ?? _produtoCompleto?.produto.precoUnit ?? 0;
 
   double get _precoTotal {
-    // Começa com o preço base do produto vezes a quantidade selecionada
     double total = _precoBase * _quantidade;
 
-    // Soma os complementos
-    // Percorre o mapa de selecionados (Grid -> Quantidade)
-    _complementosSelecionados.forEach((gridSelecionado, quantidade) {
-      try {
-        // Busca o objeto completo do complemento na lista original
-        final complemento = _produtoCompleto!.complementos.firstWhere(
-          (c) => c.complementoGrid == gridSelecionado,
-        );
-
-        // Se tiver preço, soma ao total (Preço * Quantidade do complemento)
-        if (complemento.preco != null) {
-          total += complemento.preco! * quantidade;
-        }
-      } catch (e) {
-        // Ignora caso não encontre o complemento (segurança)
+    // Adiciona complementos
+    for (final entry in _complementosSelecionados.entries) {
+      final comp = _produtoCompleto?.complementos.firstWhere(
+        (c) => c.complementoGrid == entry.key,
+        orElse: () =>
+            ProdutoComplemento(grid: 0, produtoGrid: 0, complementoGrid: 0),
+      );
+      if (comp != null && comp.preco != null) {
+        total += comp.preco! * entry.value;
       }
-    });
+    }
 
     return total;
   }
@@ -301,10 +294,7 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
                 children: [
                   // Nome
                   Text(
-                    widget.nomeProduto ??
-                        _produtoCompleto?.produto.nomeExibicao ??
-                        _produtoCompleto?.produto.descricao ??
-                        'NOME NÃO ENCONTRADO',
+                    widget.nomeProduto ?? produto.nomeExibicao,
                     style: const TextStyle(
                       color: _textWhite,
                       fontSize: 28,
@@ -389,14 +379,6 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
               children: [
                 const SizedBox(height: 40),
 
-                // Preparos
-                if (_produtoCompleto!.preparos.length > 1) ...[
-                  _buildSectionTitle('Modo de Preparo', Icons.restaurant),
-                  const SizedBox(height: 12),
-                  _buildPreparos(),
-                  const SizedBox(height: 24),
-                ],
-
                 // Composição (ingredientes)
                 if (_produtoCompleto!.composicao.isNotEmpty) ...[
                   _buildSectionTitle('Composição', Icons.list_alt),
@@ -413,11 +395,18 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
                   const SizedBox(height: 24),
                 ],
 
+                // Preparos
+                if (_produtoCompleto!.preparos.isNotEmpty) ...[
+                  _buildSectionTitle('Modo de Preparo', Icons.restaurant),
+                  const SizedBox(height: 12),
+                  _buildPreparos(),
+                  const SizedBox(height: 24),
+                ],
                 // Observações
-                _buildSectionTitle('Observações', Icons.edit_note),
-                const SizedBox(height: 12),
-                _buildObservacaoField(),
-                const SizedBox(height: 24),
+                //  _buildSectionTitle('Observações', Icons.edit_note),
+                //  const SizedBox(height: 12),
+                //   _buildObservacaoField(),
+                //   const SizedBox(height: 24),
               ],
             ),
           ),
@@ -494,12 +483,8 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
           final isRemovivel = comp.removivel;
           final isRemovida = _composicoesRemovidas.contains(comp.grid);
 
-          // LÓGICA CORRIGIDA:
-          // 1. Tenta pegar a 'descricao' (geralmente o nome correto da composição)
-          // 2. Se for nulo, tenta 'materiaPrimaNome'
-          // 3. Se ambos falharem, mostra texto genérico sem código.
-          String nomeIngrediente =
-              comp.nome ?? comp.materiaPrimaNome ?? 'Ingrediente';
+          // Nome do ingrediente - usa nome ou materiaPrimaNome
+          final nomeIngrediente = comp.nome ?? comp.materiaPrimaNome ?? '';
 
           return Column(
             children: [
@@ -523,10 +508,10 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
                   ),
                   const SizedBox(width: 12),
 
-                  // Nome do ingrediente (CORRIGIDO)
+                  // Nome do ingrediente
                   Expanded(
                     child: Text(
-                      nomeIngrediente, // Usa a variável tratada acima
+                      nomeIngrediente,
                       style: TextStyle(
                         color: isRemovida ? _textGrey : _textWhite,
                         fontSize: 15,
@@ -581,8 +566,6 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
   Widget _buildComplementos() {
     return Column(
       children: _produtoCompleto!.complementos.map((comp) {
-        print("Complemento: ${comp.complementoNome}, Preço: ${comp.preco}");
-
         final quantidade = _complementosSelecionados[comp.complementoGrid] ?? 0;
         final hasPreco = comp.preco != null && comp.preco! > 0;
 

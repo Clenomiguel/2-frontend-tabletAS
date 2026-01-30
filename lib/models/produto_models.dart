@@ -184,7 +184,7 @@ class ProdutoComplemento {
   final int grid;
   final int produtoGrid;
   final int complementoGrid;
-  final String? nome;
+  final String? complementoNome;
   final int? quantidade;
   final int? quantidadeMinima;
   final int? quantidadeMaxima;
@@ -195,7 +195,7 @@ class ProdutoComplemento {
     required this.grid,
     required this.produtoGrid,
     required this.complementoGrid,
-    this.nome,
+    this.complementoNome,
     this.quantidade,
     this.quantidadeMinima,
     this.quantidadeMaxima,
@@ -204,12 +204,15 @@ class ProdutoComplemento {
   });
 
   factory ProdutoComplemento.fromJson(Map<String, dynamic> json) {
+    // Debug: imprimir JSON recebido
+    print('🔧 ProdutoComplemento.fromJson: $json');
+
     return ProdutoComplemento(
       grid: _toInt(json['grid'] ?? json['id'] ?? 0),
       produtoGrid: _toInt(json['produto_grid'] ?? json['produto'] ?? 0),
       complementoGrid:
           _toInt(json['complemento_grid'] ?? json['complemento'] ?? 0),
-      nome: json['nome'] ?? json['complemento_nome'],
+      complementoNome: json['complemento_nome'] ?? json['nome'],
       quantidade:
           json['quantidade'] != null ? _toInt(json['quantidade']) : null,
       quantidadeMinima: json['quantidade_minima'] != null
@@ -218,7 +221,7 @@ class ProdutoComplemento {
       quantidadeMaxima: json['quantidade_maxima'] != null
           ? _toInt(json['quantidade_maxima'])
           : null,
-      preco: json['preco_unit'] != null ? _toDouble(json['preco_unit']) : null,
+      preco: _toDouble(json['preco']),
       ativo: json['ativo'] ?? true,
     );
   }
@@ -228,7 +231,7 @@ class ProdutoComplemento {
       'grid': grid,
       'produto_grid': produtoGrid,
       'complemento_grid': complementoGrid,
-      'nome': nome,
+      'complemento_nome': complementoNome,
       'quantidade': quantidade,
       'quantidade_minima': quantidadeMinima,
       'quantidade_maxima': quantidadeMaxima,
@@ -239,9 +242,6 @@ class ProdutoComplemento {
 
   /// Alias para complementoGrid (compatibilidade)
   int get complemento => complementoGrid;
-
-  /// Nome do complemento
-  String? get complementoNome => nome;
 }
 
 /// Composição do produto (ingredientes)
