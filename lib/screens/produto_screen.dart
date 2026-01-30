@@ -15,11 +15,13 @@ import '../services/cart_provider.dart';
 class ProdutoScreen extends StatefulWidget {
   final int produtoGrid;
   final double? precoCardapio;
+  final String? nomeProduto;
 
   const ProdutoScreen({
     super.key,
     required this.produtoGrid,
     this.precoCardapio,
+    this.nomeProduto,
   });
 
   @override
@@ -299,7 +301,10 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
                 children: [
                   // Nome
                   Text(
-                    _produtoCompleto?.produto.nome ?? 'Carregando...',
+                    widget.nomeProduto ??
+                        _produtoCompleto?.produto.nomeExibicao ??
+                        _produtoCompleto?.produto.descricao ??
+                        'NOME NÃO ENCONTRADO',
                     style: const TextStyle(
                       color: _textWhite,
                       fontSize: 28,
@@ -489,6 +494,13 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
           final isRemovivel = comp.removivel;
           final isRemovida = _composicoesRemovidas.contains(comp.grid);
 
+          // LÓGICA CORRIGIDA:
+          // 1. Tenta pegar a 'descricao' (geralmente o nome correto da composição)
+          // 2. Se for nulo, tenta 'materiaPrimaNome'
+          // 3. Se ambos falharem, mostra texto genérico sem código.
+          String nomeIngrediente =
+              comp.nome ?? comp.materiaPrimaNome ?? 'Ingrediente';
+
           return Column(
             children: [
               Row(
@@ -511,11 +523,10 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
                   ),
                   const SizedBox(width: 12),
 
-                  // Nome do ingrediente
+                  // Nome do ingrediente (CORRIGIDO)
                   Expanded(
                     child: Text(
-                      comp.materiaPrimaNome ??
-                          'Ingrediente ${comp.materiaPrima}',
+                      nomeIngrediente, // Usa a variável tratada acima
                       style: TextStyle(
                         color: isRemovida ? _textGrey : _textWhite,
                         fontSize: 15,
@@ -570,6 +581,8 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
   Widget _buildComplementos() {
     return Column(
       children: _produtoCompleto!.complementos.map((comp) {
+        print("Complemento: ${comp.complementoNome}, Preço: ${comp.preco}");
+
         final quantidade = _complementosSelecionados[comp.complementoGrid] ?? 0;
         final hasPreco = comp.preco != null && comp.preco! > 0;
 

@@ -151,6 +151,7 @@ class _MenuScreenState extends State<MenuScreen> {
         builder: (_) => ProdutoScreen(
           produtoGrid: produto.produtoId,
           precoCardapio: produto.preco,
+          nomeProduto: produto.produto.nomeExibicao,
         ),
       ),
     ).then((_) => _resetInactivityTimer()); // Reseta ao voltar
@@ -541,8 +542,6 @@ class _MenuScreenState extends State<MenuScreen> {
           // Links inferiores
           const Divider(color: Color(0xFF404040), height: 1),
           _buildSidebarLink('SOBRE'),
-          _buildSidebarLink('PONTOS'),
-          _buildSidebarLink('AVALIE'),
           const SizedBox(height: 16),
         ],
       ),
@@ -983,7 +982,7 @@ class _CarouselWidgetState extends State<_CarouselWidget> {
   static const List<String> _carouselFiles = [
     '1.jpg',
     '2.jpg',
-    '3.jpg',
+    '3.mp4',
     // Adicione mais conforme necessário:
     // '4.png',
     // '5.jpg',

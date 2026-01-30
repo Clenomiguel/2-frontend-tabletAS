@@ -218,7 +218,7 @@ class ProdutoComplemento {
       quantidadeMaxima: json['quantidade_maxima'] != null
           ? _toInt(json['quantidade_maxima'])
           : null,
-      preco: json['preco'] != null ? _toDouble(json['preco']) : null,
+      preco: json['preco_unit'] != null ? _toDouble(json['preco_unit']) : null,
       ativo: json['ativo'] ?? true,
     );
   }
