@@ -24,7 +24,7 @@ void main() {
   // Inicializa API
   Api.init(const ApiConfig(
     baseUrl: 'http://192.168.3.150:8000', // Alterar para seu IP
-    empresaId: 1, // Configurar conforme empresa
+    empresaId: 26322354, // Configurar conforme empresa
     cardapioId: null, // null = carrega primeiro cardápio disponível
   ));
 

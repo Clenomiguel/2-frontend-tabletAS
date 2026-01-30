@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import '../models/produto_models.dart';
 import '../models/cardapio_models.dart';
 import '../models/cart_models.dart';
+import 'package:flutter/foundation.dart'; // Para debugPrint
 
 class ApiException implements Exception {
   final String message;
@@ -430,8 +431,9 @@ class ApiService {
     return data as Map<String, dynamic>;
   }
 
-  Future<Map<String, dynamic>> getComandaCompleta(String numero) async {
-    final data = await _get('/api/v1/comandas/$numero/completo');
+  /// Busca comanda completa com todos os produtos
+  Future<Map<String, dynamic>> getComandaCompleta(String comanda) async {
+    final data = await _get('/api/v1/comandas/$comanda/completo');
     return data as Map<String, dynamic>;
   }
 
