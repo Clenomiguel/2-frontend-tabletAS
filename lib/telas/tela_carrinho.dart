@@ -9,9 +9,9 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
-import '../services/cart_provider.dart';
-import '../models/cart_models.dart';
-import '../services/api_service.dart';
+import '../servicos/cart_provider.dart';
+import '../modelos/cart_models.dart';
+import '../servicos/api_service.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});

@@ -4,7 +4,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import '../services/api_service.dart';
+import '../servicos/api_service.dart';
 
 /// Widget que exibe imagem de produto carregada do backend (base64)
 class ProdutoImage extends StatefulWidget {

@@ -1,8 +1,8 @@
 // lib/widgets/produto_card.dart
 
 import 'package:flutter/material.dart';
-import '../models/cardapio_models.dart';
-import '../models/produto_models.dart';
+import '../modelos/cardapio_models.dart';
+import '../modelos/produto_models.dart';
 import 'base64_image.dart';
 
 class ProdutoCard extends StatelessWidget {

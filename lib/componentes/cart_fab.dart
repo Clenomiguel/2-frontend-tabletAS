@@ -4,8 +4,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../services/cart_provider.dart';
-import '../screens/cart_screen.dart';
+import '../servicos/cart_provider.dart';
+import '../telas/tela_carrinho.dart';
 
 class CartFab extends StatelessWidget {
   const CartFab({super.key});
@@ -81,12 +81,13 @@ class CartBadge extends StatelessWidget {
     return Consumer<CartProvider>(
       builder: (context, cart, _) {
         return IconButton(
-          onPressed: onTap ?? () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const CartScreen()),
-            );
-          },
+          onPressed: onTap ??
+              () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const CartScreen()),
+                );
+              },
           icon: Stack(
             clipBehavior: Clip.none,
             children: [

@@ -6,7 +6,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
-import '../models/cardapio_models.dart';
+import '../modelos/cardapio_models.dart';
 
 /// Decodifica base64 de forma segura, limpando caracteres inválidos
 Uint8List? _safeBase64Decode(String base64String) {

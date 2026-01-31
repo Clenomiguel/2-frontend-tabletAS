@@ -2,7 +2,7 @@ import 'dart:typed_data'; // Necessário para manipular bytes da imagem (Uint8Li
 import 'package:flutter/material.dart'; // Importa widgets do Flutter
 
 // Imports do projeto
-import '../../models/cardapio_models.dart'; // Modelo de dados das seções
+import '../../modelos/cardapio_models.dart'; // Modelo de dados das seções
 import '../../utilitarios/cores_app.dart'; // Paleta de cores centralizada
 import '../../utilitarios/safebase64.dart'; // Utilitário para decodificar Base64
 

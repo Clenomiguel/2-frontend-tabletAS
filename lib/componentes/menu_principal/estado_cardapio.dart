@@ -2,8 +2,8 @@ import 'dart:async'; // Para utilizar o Timer
 import 'package:flutter/material.dart'; // Para ChangeNotifier e debugPrint (se necessário)
 
 // Imports do projeto
-import '../../models/cardapio_models.dart';
-import '../../services/api_service.dart';
+import '../../modelos/cardapio_models.dart';
+import '../../servicos/api_service.dart';
 
 /// ViewModel responsável por gerenciar todo o estado da tela de Menu.
 /// Inclui: carregamento de dados, filtros de busca, navegação e timer de inatividade.

@@ -5,9 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
-import 'services/api_service.dart';
-import 'services/cart_provider.dart';
-import 'screens/tela_menu.dart';
+import 'servicos/api_service.dart';
+import 'servicos/cart_provider.dart';
+import 'telas/tela_menu.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();

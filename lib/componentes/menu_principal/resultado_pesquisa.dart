@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 // Imports do projeto
-import '../../models/cardapio_models.dart';
+import '../../modelos/cardapio_models.dart';
 import '../../utilitarios/cores_app.dart'; // Uso das cores centralizadas
 
 /// Widget responsável por exibir a interface de resultados da busca.

@@ -18,16 +18,16 @@ import '../componentes/comuns/estado_erro.dart';
 
 // --- Imports de Utilitários e Modelos ---
 import '../utilitarios/cores_app.dart';
-import '../models/cardapio_models.dart';
+import '../modelos/cardapio_models.dart';
 
 // --- Imports de Serviços ---
-import '../services/cart_provider.dart';
-import '../services/api_service.dart';
+import '../servicos/cart_provider.dart';
+import '../servicos/api_service.dart';
 
 // --- Imports de Outras Telas ---
-import 'produto_screen.dart';
-import 'cart_screen.dart';
-import 'minha_conta_screen.dart';
+import './tela_produto_detalhes.dart';
+import './tela_carrinho.dart';
+import './tela_minha_conta.dart';
 
 /// Tela Principal do Cardápio (Menu)
 /// Gerencia o estado global da navegação, carregamento de dados e inatividade.

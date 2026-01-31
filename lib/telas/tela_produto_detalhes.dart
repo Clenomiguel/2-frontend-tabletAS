@@ -7,10 +7,10 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../models/produto_models.dart';
-import '../models/cart_models.dart';
-import '../services/api_service.dart';
-import '../services/cart_provider.dart';
+import '../modelos/produto_models.dart';
+import '../modelos/cart_models.dart';
+import '../servicos/api_service.dart';
+import '../servicos/cart_provider.dart';
 
 class ProdutoScreen extends StatefulWidget {
   final int produtoGrid;

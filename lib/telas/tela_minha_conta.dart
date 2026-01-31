@@ -5,8 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
-import '../models/comanda_models.dart';
-import '../services/api_service.dart';
+import '../modelos/comanda_models.dart';
+import '../servicos/api_service.dart';
 
 class MinhaContaScreen extends StatefulWidget {
   final String? comandaInicial;

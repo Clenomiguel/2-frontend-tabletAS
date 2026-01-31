@@ -5,9 +5,9 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 
-import '../models/produto_models.dart';
-import '../models/cardapio_models.dart';
-import '../models/cart_models.dart';
+import '../modelos/produto_models.dart';
+import '../modelos/cardapio_models.dart';
+import '../modelos/cart_models.dart';
 
 class ApiException implements Exception {
   final String message;

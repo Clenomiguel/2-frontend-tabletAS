@@ -4,10 +4,10 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'dart:developer' as dev; // Import para logs mais limpos
 
-import '../models/cart_models.dart';
-import '../services/cart_provider.dart';
-import '../services/api_service.dart';
-import '../utils/parsing_utils.dart';
+import '../modelos/cart_models.dart';
+import '../servicos/cart_provider.dart';
+import '../servicos/api_service.dart';
+import '../utilitarios/parsing_utils.dart';
 
 class CheckoutScreen extends StatefulWidget {
   const CheckoutScreen({super.key});

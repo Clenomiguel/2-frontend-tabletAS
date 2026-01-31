@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 // Imports do projeto
-import '../../models/cardapio_models.dart'; // Modelo de dados do produto
+import '../../modelos/cardapio_models.dart'; // Modelo de dados do produto
 import '../../utilitarios/cores_app.dart'; // Paleta de cores
 import './produtos_imagens.dart'; // Componente de imagem (ProdutoImage)
 

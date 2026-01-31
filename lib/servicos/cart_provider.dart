@@ -4,8 +4,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
-import '../models/cart_models.dart';
-import '../models/produto_models.dart';
+import '../modelos/cart_models.dart';
+import '../modelos/produto_models.dart';
 import 'api_service.dart';
 
 /// Provider para gerenciamento do carrinho

@@ -2,7 +2,7 @@ import 'dart:typed_data'; // Para manipular os bytes da imagem (Uint8List)
 import 'package:flutter/material.dart';
 
 // Imports do projeto
-import '../../services/api_service.dart'; // Serviço para buscar imagem na API
+import '../../servicos/api_service.dart'; // Serviço para buscar imagem na API
 import '../../utilitarios/safebase64.dart'; // Utilitário de decodificação (StringUtils)
 import '../../utilitarios/cores_app.dart'; // Paleta de cores
 

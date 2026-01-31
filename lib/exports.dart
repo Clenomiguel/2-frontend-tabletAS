@@ -2,24 +2,24 @@
 // Arquivo central de exports para facilitar imports
 
 // Models
-export 'models/produto_models.dart';
-export 'models/cardapio_models.dart';
-export 'models/cart_models.dart';
+export 'modelos/produto_models.dart';
+export 'modelos/cardapio_models.dart';
+export 'modelos/cart_models.dart';
 
 // Services
-export 'services/api_service.dart';
-export 'services/cart_provider.dart';
+export 'servicos/api_service.dart';
+export 'servicos/cart_provider.dart';
 
 // Screens
-export 'screens/menu_screen.dart';
-export 'screens/produto_screen.dart';
-export 'screens/cart_screen.dart';
-export 'screens/checkout_screen.dart';
+export 'telas/tela_menu.dart';
+export 'telas/tela_produto_detalhes.dart';
+export 'telas/tela_carrinho.dart';
+export 'telas/tela_finalizacao.dart';
 
 // Widgets
-export 'widgets/produto_card.dart';
-export 'widgets/secao_header.dart';
-export 'widgets/cart_fab.dart';
+export 'componentes/produto_card.dart';
+export 'componentes/secao_header.dart';
+export 'componentes/cart_fab.dart';
 
 // Utils
-export 'utils/parsing_utils.dart';
+export 'utilitarios/parsing_utils.dart';

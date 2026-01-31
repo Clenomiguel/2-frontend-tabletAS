@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 // Imports do projeto
-import '../../services/cart_provider.dart'; // Gerenciador de estado do carrinho
+import '../../servicos/cart_provider.dart'; // Gerenciador de estado do carrinho
 import '../../utilitarios/cores_app.dart'; // Paleta de cores
 
 /// Botão flutuante que exibe o resumo do carrinho (Total + Preço).
