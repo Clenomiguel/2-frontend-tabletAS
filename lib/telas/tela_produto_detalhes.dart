@@ -413,14 +413,6 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
               children: [
                 const SizedBox(height: 40),
 
-                // Preparos
-                if (_produtoCompleto!.preparos.isNotEmpty) ...[
-                  _buildSectionTitle('Modo de Preparo', Icons.restaurant),
-                  const SizedBox(height: 12),
-                  _buildPreparos(),
-                  const SizedBox(height: 24),
-                ],
-
                 // Composição (ingredientes)
                 if (_produtoCompleto!.composicao.isNotEmpty) ...[
                   _buildSectionTitle('Composição', Icons.list_alt),
@@ -434,6 +426,14 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
                   _buildSectionTitle('Complementos', Icons.add_circle_outline),
                   const SizedBox(height: 12),
                   _buildComplementos(),
+                  const SizedBox(height: 24),
+                ],
+
+                // Preparos
+                if (_produtoCompleto!.preparos.isNotEmpty) ...[
+                  _buildSectionTitle('Modo de Preparo', Icons.restaurant),
+                  const SizedBox(height: 12),
+                  _buildPreparos(),
                   const SizedBox(height: 24),
                 ],
 

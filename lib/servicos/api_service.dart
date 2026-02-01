@@ -415,6 +415,10 @@ class ApiService {
 
   /// Adiciona produtos a uma comanda (cria se não existir)
   /// Este é o método principal usado pelo autoatendimento
+  ///
+  /// Fluxo de status:
+  /// - Comanda nova: cria com 'A', adiciona produtos, finaliza com 'P'
+  /// - Comanda existente com 'P': muda para 'A', adiciona produtos, volta para 'P'
   Future<ComandaResponse> adicionarProdutosComanda({
     required String comandaNumero,
     required List<CartItem> items,
@@ -427,15 +431,32 @@ class ApiService {
     try {
       // 1. Verificar se a comanda existe
       bool comandaCriada = false;
+      bool comandaEstavaPendente = false; // Flag para saber se estava em 'P'
       Map<String, dynamic>? comanda;
 
       try {
         comanda = await getComanda(comandaNumero);
         print('✅ Comanda encontrada: $comanda');
 
-        // 2. Verificar status da comanda (L = Livre, A = Aberta/Aguardando)
+        // 2. Verificar status da comanda
         final status = comanda['status']?.toString().toUpperCase() ?? '';
-        if (status != 'L' && status != 'A' && status.isEmpty) {
+        print('📋 Status atual da comanda: $status');
+
+        // Se estiver com status 'P' (Pendente/Produção), precisa mudar para 'A' antes de adicionar
+        if (status == 'P') {
+          print(
+              '🔄 Comanda em produção (P) - mudando para A para adicionar produtos');
+          comandaEstavaPendente = true;
+
+          try {
+            await _put('/api/v1/comandas/$comandaNumero', {'status': 'A'});
+            print('✅ Status alterado de P para A');
+          } catch (e) {
+            print('⚠️ Erro ao alterar status para A: $e');
+          }
+        }
+        // Se não estiver em status válido para adicionar produtos
+        else if (status != 'L' && status != 'A' && status.isEmpty) {
           print('⚠️ Comanda com status $status - será criada nova');
           comanda = null; // Forçar criação de nova comanda
         }
@@ -452,7 +473,7 @@ class ApiService {
           'comanda': comandaNumero,
           'empresa': config.empresaId,
           'quantidade_pessoas': 1,
-          'status': 'A',
+          'status': 'A', // Cria com 'A', depois muda para 'P'
           if (clienteNome != null && clienteNome.isNotEmpty)
             'cliente_nome': clienteNome,
         };
@@ -501,14 +522,15 @@ class ApiService {
         final codigoProduto = produtoResponse['codigo'];
         print('✅ Produto adicionado com código: $codigoProduto');
 
-        // Adicionar complementos
+        // Adicionar complementos usando complementoGrid
         if (codigoProduto != null && item.complementos.isNotEmpty) {
           for (final comp in item.complementos) {
-            print('  ➕ Complemento: ${comp.nome}');
+            print(
+                '  ➕ Complemento: ${comp.nome} (grid: ${comp.complementoGrid})');
             await _post(
               '/api/v1/comandas/produtos/$codigoProduto/complementos',
               {
-                'complemento': comp.produtoGrid,
+                'complemento': comp.complementoGrid,
                 'quantidade': comp.quantidade,
                 'preco': comp.preco,
               },
@@ -531,23 +553,15 @@ class ApiService {
         }
       }
 
-      // 5. Atualizar status da comanda para 'A' (Aguardando/Aberta) - só se não foi criada agora
-      if (!comandaCriada) {
-        try {
-          await _put('/api/v1/comandas/$comandaNumero', {
-            'status': 'A',
-          });
-          print('✅ Status da comanda atualizado para A');
-        } catch (e) {
-          try {
-            await _post('/api/v1/comandas/$comandaNumero/status', {
-              'status': 'A',
-            });
-            print('✅ Status da comanda atualizado para A (via POST)');
-          } catch (e2) {
-            print('⚠️ Não foi possível atualizar status: $e2');
-          }
-        }
+      // 5. Atualizar status da comanda para 'P' (Pendente/Produção)
+      // Sempre finaliza com 'P' após adicionar produtos
+      try {
+        await _put('/api/v1/comandas/$comandaNumero', {
+          'status': 'P',
+        });
+        print('✅ Status da comanda atualizado para P (Pendente/Produção)');
+      } catch (e) {
+        print('⚠️ Não foi possível atualizar status para P: $e');
       }
 
       // 6. Registrar cliente se informado
@@ -571,7 +585,9 @@ class ApiService {
         comandaId: comandaNumero,
         message: comandaCriada
             ? 'Comanda criada e pedido registrado!'
-            : 'Pedido registrado com sucesso!',
+            : comandaEstavaPendente
+                ? 'Novos itens adicionados ao pedido!'
+                : 'Pedido registrado com sucesso!',
       );
     } catch (e) {
       print('❌ Erro ao adicionar produtos na comanda: $e');
@@ -580,6 +596,7 @@ class ApiService {
   }
 
   /// Registra uma nova comanda (usado quando não há comanda existente)
+  /// Fluxo: cria com 'A', adiciona produtos, finaliza com 'P'
   Future<ComandaResponse> registrarComanda(Cart cart) async {
     String? comandaFinal = cart.comanda?.toString();
     String? clienteFinal = cart.clienteNome;
@@ -604,7 +621,7 @@ class ApiService {
         'comanda': comandaNumeroParaEnvio,
         'empresa': config.empresaId,
         'quantidade_pessoas': 1,
-        'status': 'A',
+        'status': 'A', // Cria com 'A', depois muda para 'P'
         if (clienteFinal != null && clienteFinal.isNotEmpty)
           'cliente_nome': clienteFinal,
       };
@@ -642,10 +659,11 @@ class ApiService {
         final codigoProduto = produtoResponse['codigo'];
 
         if (codigoProduto != null) {
+          // Adicionar complementos usando complementoGrid
           for (final comp in item.complementos) {
             await _post(
                 '/api/v1/comandas/produtos/$codigoProduto/complementos', {
-              'complemento': comp.produtoGrid,
+              'complemento': comp.complementoGrid,
               'quantidade': comp.quantidade,
               'preco': comp.preco,
             });
@@ -658,6 +676,16 @@ class ApiService {
             });
           }
         }
+      }
+
+      // Após adicionar todos os produtos, mudar status para 'P' (Pendente/Produção)
+      try {
+        await _put('/api/v1/comandas/$comandaNumero', {
+          'status': 'P',
+        });
+        print('✅ Status da comanda atualizado para P (Pendente/Produção)');
+      } catch (e) {
+        print('⚠️ Não foi possível atualizar status para P: $e');
       }
 
       return ComandaResponse(
