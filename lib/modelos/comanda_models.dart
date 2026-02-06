@@ -55,13 +55,13 @@ class ComandaCompleta {
   String get statusFormatado {
     switch (status.toUpperCase()) {
       case 'L':
-        return 'Aberta';
+        return 'Livre';
       case 'F':
         return 'Fechada';
       case 'C':
         return 'Cancelada';
       case 'P':
-        return 'Paga';
+        return 'a  Pagar';
       default:
         return status;
     }

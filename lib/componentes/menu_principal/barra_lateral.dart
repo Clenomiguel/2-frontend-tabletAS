@@ -6,6 +6,10 @@ import '../../modelos/cardapio_models.dart'; // Modelo de dados das seções
 import '../../utilitarios/cores_app.dart'; // Paleta de cores centralizada
 import '../../utilitarios/safebase64.dart'; // Utilitário para decodificar Base64
 
+// Imports das telas de configuração e login
+import '../../telas/configuracao/admin_login_screen.dart';
+import '../../telas/configuracao/config_wizard_screen.dart';
+
 /// Widget que representa a barra lateral de navegação (Menu de Categorias).
 /// Recebe a lista de seções e gerencia qual está selecionada.
 class MenuSidebar extends StatelessWidget {
@@ -70,8 +74,60 @@ class MenuSidebar extends StatelessWidget {
           // Divisor antes dos links do rodapé
           const Divider(color: AppColors.divider, height: 1),
 
-          // Link estático "SOBRE" (exemplo de item fixo)
-          _buildSidebarLink('SOBRE'),
+          // Link estático "SOBRE"
+          _buildSidebarLink(
+            context,
+            label: 'SOBRE',
+            onTap: () {
+              // Ação para o Sobre
+            },
+          ),
+
+          // Divisor entre Sobre e Configurações
+          const Divider(color: AppColors.divider, height: 1),
+
+          // Link estático "CONFIGURAÇÕES"
+          _buildSidebarLink(
+            context,
+            label: 'CONFIGURAÇÕES',
+            icon: Icons.settings,
+            onTap: () {
+              // Primeiro, abre a tela de Login Administrativo
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => AdminLoginScreen(
+                    onCancel: () => Navigator.pop(context),
+                    onLoginSuccess: () {
+                      // Se o login for bem-sucedido, substitui a tela de login pelo Wizard de Configuração
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ConfigWizardScreen(
+                            isReconfiguracao: true,
+                            onConfigCompleta: (BuildContext wizardContext) {
+                              // <-- CORREÇÃO: Aceita o BuildContext
+                              // Fecha o wizard usando o SEU PRÓPRIO CONTEXTO (wizardContext)
+                              Navigator.pop(wizardContext);
+
+                              // Mostra a notificação.
+                              // Aqui, podemos usar o 'context' da BarraLateral, pois ele ainda existe.
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Configurações atualizadas!'),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              );
+            },
+          ),
 
           // Espaçamento final
           const SizedBox(height: 16),
@@ -80,23 +136,35 @@ class MenuSidebar extends StatelessWidget {
     );
   }
 
-  /// Constrói um link de texto simples para o rodapé da sidebar
-  Widget _buildSidebarLink(String label) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: AppColors.textGrey,
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
+  /// Constrói um link de texto simples ou com ícone para o rodapé da sidebar
+  Widget _buildSidebarLink(BuildContext context,
+      {required String label, IconData? icon, VoidCallback? onTap}) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, color: AppColors.textGrey, size: 14),
+              const SizedBox(width: 8),
+            ],
+            Text(
+              label,
+              style: const TextStyle(
+                color: AppColors.textGrey,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
   /// Lógica para escolher o ícone baseado no nome da categoria.
-  /// Útil quando a imagem falha ou não existe.
   IconData _getSecaoIcon(String nome) {
     final lower = nome.toLowerCase();
 
@@ -130,7 +198,6 @@ class MenuSidebar extends StatelessWidget {
 }
 
 /// Componente visual privado para um item da sidebar.
-/// Extraído para manter o código do MenuSidebar limpo.
 class _SidebarItem extends StatelessWidget {
   final IconData icon;
   final String label;

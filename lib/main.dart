@@ -1,32 +1,31 @@
 // lib/main.dart
-// Ponto de entrada da aplicação Totem
+// Ponto de entrada da aplicação Totem (VERSÃO FINAL CORRIGIDA)
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+// Serviços
 import 'servicos/api_service.dart';
 import 'servicos/cart_provider.dart';
-import 'telas/tela_menu.dart';
+import 'servicos/config_storage_service.dart';
 
-void main() {
+// Telas
+import 'telas/tela_menu.dart';
+import 'telas/configuracao/config_wizard_screen.dart';
+import 'telas/configuracao/admin_login_screen.dart';
+
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Força orientação landscape para totem
-  SystemChrome.setPreferredOrientations([
+  await SystemChrome.setPreferredOrientations([
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
   ]);
 
-  // Configura UI do sistema
+  // UI imersiva (esconde barras do Android)
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-
-  // Inicializa API
-  Api.init(const ApiConfig(
-    baseUrl: 'http://192.168.3.150:8000', // Alterar para seu IP
-    empresaId: 26322354, // Configurar conforme empresa
-    cardapioId: null, // null = carrega primeiro cardápio disponível
-  ));
 
   runApp(const TotemApp());
 }
@@ -41,58 +40,16 @@ class TotemApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => CartProvider()),
       ],
       child: MaterialApp(
-        title: 'Totem Self-Service',
         debugShowCheckedModeBanner: false,
+        title: 'Totem Self-Service',
         theme: ThemeData(
-          primarySwatch: Colors.deepPurple,
+          useMaterial3: true,
+          fontFamily: 'Roboto',
           colorScheme: ColorScheme.fromSeed(
             seedColor: const Color(0xFF6B21A8),
-            primary: const Color(0xFF6B21A8),
+            brightness: Brightness.dark,
           ),
-          fontFamily: 'Roboto',
-          useMaterial3: true,
-
-          // Customização de componentes
-          appBarTheme: const AppBarTheme(
-            backgroundColor: Color(0xFF6B21A8),
-            foregroundColor: Colors.white,
-            elevation: 0,
-            centerTitle: true,
-          ),
-
-          elevatedButtonTheme: ElevatedButtonThemeData(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF6B21A8),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 12,
-              ),
-            ),
-          ),
-
-          inputDecorationTheme: InputDecorationTheme(
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                color: Color(0xFF6B21A8),
-                width: 2,
-              ),
-            ),
-          ),
-
-          cardTheme: CardTheme(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            elevation: 4,
-          ),
+          scaffoldBackgroundColor: const Color(0xFF1a1a2e),
         ),
         home: const SplashScreen(),
       ),
@@ -100,7 +57,7 @@ class TotemApp extends StatelessWidget {
   }
 }
 
-/// Tela de splash com verificação de conexão
+/// Splash responsável por validar estado da aplicação e direcionar
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -109,137 +66,198 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  bool _isLoading = true;
+  bool _loading = true;
   String? _error;
+  bool _precisaReconfigurar = false;
 
   @override
   void initState() {
     super.initState();
-    _checkConnection();
+    _bootstrap();
   }
 
-  Future<void> _checkConnection() async {
+  /// Fluxo de inicialização
+  Future<void> _bootstrap() async {
+    if (!mounted) return;
     setState(() {
-      _isLoading = true;
+      _loading = true;
       _error = null;
+      _precisaReconfigurar = false;
     });
 
     try {
-      final isOnline = await Api.instance.healthCheck();
+      final config = await ConfigStorageService.getConfig();
 
-      if (!isOnline) {
-        throw Exception('Servidor offline');
+      if (!config.isConfigured) {
+        debugPrint('⚙️ Nenhuma configuração encontrada. Iniciando Wizard.');
+        _irParaConfiguracao();
+        return;
       }
 
-      // Navega para o menu
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const MenuScreen()),
-        );
+      debugPrint(
+          '🚀 Configuração encontrada: ${config.serverIp}:${config.serverPort}');
+
+      Api.init(ApiConfig(
+        baseUrl: 'http://${config.serverIp}:${config.serverPort}',
+        empresaId: config.empresaId!,
+        cardapioId: config.cardapioId,
+      ));
+
+      debugPrint('📡 Testando conexão com servidor...');
+      final online = await Api.instance.healthCheck();
+
+      if (!online) {
+        throw Exception(
+            'Servidor configurado (${config.serverIp}) não responde.');
       }
+
+      if (!mounted) return;
+      _irParaMenu();
     } catch (e) {
+      debugPrint('❌ Erro no bootstrap: $e');
+      if (!mounted) return;
       setState(() {
-        _error = 'Não foi possível conectar ao servidor.\n\n$e';
-        _isLoading = false;
+        _error = e.toString();
+        _loading = false;
+        _precisaReconfigurar = true;
       });
     }
+  }
+
+  // --- MÉTODOS DE NAVEGAÇÃO ---
+
+  void _irParaConfiguracao() {
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ConfigWizardScreen(
+          onConfigCompleta: _navegarParaMenuAposConfig,
+        ),
+      ),
+    );
+  }
+
+  void _irParaMenu() {
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const MenuScreen(),
+      ),
+    );
+  }
+
+  // =======================================================================
+  // CORREÇÃO: A função agora aceita o BuildContext vindo do Wizard
+  // =======================================================================
+  void _navegarParaMenuAposConfig(BuildContext wizardContext) {
+    // O atraso ainda é uma boa prática para dar tempo da UI se resolver.
+    Future.delayed(const Duration(milliseconds: 50), () {
+      // A verificação 'if (mounted)' não é mais necessária aqui,
+      // pois estamos usando o 'wizardContext' que sabemos que está ativo.
+      Navigator.pushAndRemoveUntil(
+        wizardContext, // <-- Usamos o contexto do Wizard, que está na tela!
+        MaterialPageRoute(builder: (_) => const MenuScreen()),
+        (route) => false, // Limpa todas as telas anteriores
+      );
+    });
+  }
+
+  void _abrirAdminParaReconfigurar() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AdminLoginScreen(
+          onLoginSuccess: () {
+            Navigator.pop(context); // Fecha a tela de login
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ConfigWizardScreen(
+                  isReconfiguracao: true,
+                  // Usa a mesma função de navegação corrigida
+                  onConfigCompleta: _navegarParaMenuAposConfig,
+                ),
+              ),
+            );
+          },
+          onCancel: () => Navigator.pop(context),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF6B21A8),
+      backgroundColor: const Color(0xFF1a1a2e),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Logo
-            Container(
-              width: 150,
-              height: 150,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(30),
-              ),
-              child: const Icon(
-                Icons.restaurant_menu,
-                size: 80,
-                color: Color(0xFF6B21A8),
-              ),
-            ),
-
-            const SizedBox(height: 40),
-
-            const Text(
-              'Self-Service',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 36,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-
-            const SizedBox(height: 60),
-
-            if (_isLoading) ...[
-              const CircularProgressIndicator(
-                color: Colors.white,
-                strokeWidth: 3,
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Conectando...',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 16,
-                ),
-              ),
-            ],
-
-            if (_error != null) ...[
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 40),
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: _loading
+              ? const Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(
-                      Icons.wifi_off,
-                      color: Colors.white70,
-                      size: 48,
+                    CircularProgressIndicator(color: Colors.blue),
+                    SizedBox(height: 24),
+                    Text(
+                      'Iniciando sistema...',
+                      style: TextStyle(color: Colors.white70, fontSize: 18),
+                    ),
+                  ],
+                )
+              : Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.wifi_off,
+                        color: Colors.redAccent, size: 80),
+                    const SizedBox(height: 24),
+                    Text(
+                      'Falha na Inicialização',
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineMedium
+                          ?.copyWith(
+                              color: Colors.white, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      _error!,
+                      _error ?? 'Erro desconhecido',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                      ),
+                      style:
+                          const TextStyle(color: Colors.white70, fontSize: 16),
+                    ),
+                    const SizedBox(height: 48),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: _bootstrap,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Tentar Novamente'),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 32, vertical: 16),
+                          ),
+                        ),
+                        if (_precisaReconfigurar) ...[
+                          const SizedBox(width: 24),
+                          OutlinedButton.icon(
+                            onPressed: _abrirAdminParaReconfigurar,
+                            icon: const Icon(Icons.settings),
+                            label: const Text('Reconfigurar'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 32, vertical: 16),
+                            ),
+                          ),
+                        ]
+                      ],
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: _checkConnection,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Tentar novamente'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: const Color(0xFF6B21A8),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 32,
-                    vertical: 16,
-                  ),
-                ),
-              ),
-            ],
-          ],
         ),
       ),
     );

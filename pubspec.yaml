@@ -11,6 +11,10 @@ dependencies:
     sdk: flutter
   video_player: ^2.8.1
   mobile_scanner: ^3.5.5
+  shared_preferences: ^2.2.2
+  postgres: ^3.1.1          # ← NOVO
+  crypto: ^3.0.3  
+  
   # HTTP Client
   http: ^1.1.0
   
@@ -18,7 +22,7 @@ dependencies:
   provider: ^6.1.1
   
   # Geração de UUID
-  uuid: ^4.2.1
+  uuid: ^4.3.3
   
   # Cache de imagens
   cached_network_image: ^3.3.0
